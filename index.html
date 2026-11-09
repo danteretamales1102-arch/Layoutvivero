@@ -1,0 +1,1845 @@
+<!DOCTYPE html>
+<html lang="es" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Expediente CAD 2D/3D — Vivero Forestal Anti-Nieve Molco Alto (620 msnm)</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-cad: #070d19;
+      --grid-major: rgba(56, 189, 248, 0.14);
+      --grid-minor: rgba(56, 189, 248, 0.05);
+    }
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: #060b14;
+      color: #e2e8f0;
+      overflow-x: hidden;
+    }
+    .font-mono-tech {
+      font-family: 'JetBrains Mono', monospace;
+    }
+    .cad-blueprint-bg {
+      background-color: var(--bg-cad);
+      background-image:
+        linear-gradient(to right, var(--grid-major) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-major) 1px, transparent 1px),
+        linear-gradient(to right, var(--grid-minor) 1px, transparent 1px),
+        linear-gradient(to bottom, var(--grid-minor) 1px, transparent 1px);
+      background-size: 100px 100px, 100px 100px, 20px 20px, 20px 20px;
+    }
+    /* Custom Scrollbars */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: #0f172a;
+    }
+    ::-webkit-scrollbar-thumb {
+      background: #334155;
+      border-radius: 3px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: #38bdf8;
+    }
+    /* Interactive SVG elements */
+    .cad-part {
+      cursor: pointer;
+      transition: opacity 0.15s ease, filter 0.15s ease, stroke-width 0.15s ease;
+    }
+    .cad-part:hover {
+      filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.85));
+    }
+    .cad-part.selected-part {
+      filter: drop-shadow(0 0 10px rgba(250, 204, 21, 0.95));
+      stroke: #facc15 !important;
+    }
+    input[type="range"] {
+      accent-color: #38bdf8;
+    }
+  </style>
+</head>
+<body class="min-h-screen flex flex-col selection:bg-sky-500 selection:text-slate-950">
+
+  <!-- TOP HEADER & ENGINEERING TITLE BLOCK -->
+  <header class="border-b border-slate-800 bg-slate-950/90 backdrop-blur sticky top-0 z-30 px-4 py-2.5">
+    <div class="max-w-[1800px] mx-auto flex flex-wrap items-center justify-between gap-3">
+      <!-- Project Title & Coordinates -->
+      <div class="flex items-center gap-3">
+        <div class="w-10 h-10 rounded-lg bg-sky-500/10 border border-sky-500/40 flex items-center justify-center text-sky-400 font-mono-tech font-bold text-sm shadow-inner">
+          CAD
+        </div>
+        <div>
+          <div class="flex items-center gap-2 flex-wrap">
+            <h1 class="text-sm sm:text-base font-bold tracking-tight text-white">
+              MÓDULO VIVERO FORESTAL ANTI-NIEVE — MOLCO ALTO
+            </h1>
+            <span class="px-2 py-0.5 text-[11px] font-mono-tech font-semibold rounded bg-emerald-500/15 text-emerald-300 border border-emerald-500/30">
+              620 msnm · Villarrica
+            </span>
+            <span class="px-2 py-0.5 text-[11px] font-mono-tech font-semibold rounded bg-sky-500/15 text-sky-300 border border-sky-500/30">
+              Escala 1:1 (mm) · Pendiente 35°
+            </span>
+          </div>
+          <p class="text-xs text-slate-400 font-mono-tech">
+            Huella X=4.000 mm (Cubierta 4.600 mm) × Y=9.000 mm × Z=+3.800 mm | Sobrecarga Nieve: 120–160 kg/m² (5.760 kg máx) | Capacidad: 125 Bandejas (6.750–10.500 alvéolos)
+          </p>
+        </div>
+      </div>
+
+      <!-- Main Mode Tabs -->
+      <div class="flex items-center bg-slate-900 p-1 rounded-lg border border-slate-800 gap-1">
+        <button id="tab-split" onclick="setMainLayout('split')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 bg-sky-500 text-slate-950 shadow">
+          <span>⚡ Vista Dual (3D + 2D + BOM)</span>
+        </button>
+        <button id="tab-3d" onclick="setMainLayout('3d')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800">
+          <span>🧊 Modelo 3D Interactivo</span>
+        </button>
+        <button id="tab-2d" onclick="setMainLayout('2d')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800">
+          <span>📐 Planos CAD 2D (al mm)</span>
+        </button>
+        <button id="tab-bom" onclick="setMainLayout('bom')" class="px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800">
+          <span>📋 Cubicación BOM (C01-C20)</span>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <!-- KPI & FINANCIAL CONTROL BAR -->
+  <section class="bg-slate-900/70 border-b border-slate-800/80 px-4 py-2">
+    <div class="max-w-[1800px] mx-auto grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-2.5 items-center">
+      <!-- KPI 1: CAPEX -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
+        <div class="text-[10px] font-mono-tech uppercase text-slate-400 flex justify-between">
+          <span>CAPEX Infraestructura (C01-C17)</span>
+          <span class="text-sky-400">36,0 m²</span>
+        </div>
+        <div id="kpi-capex" class="text-base sm:text-lg font-bold font-mono-tech text-white">$2.441.280</div>
+        <div id="kpi-capex-sub" class="text-[11px] text-slate-400">Precio base retail verificado</div>
+      </div>
+
+      <!-- KPI 2: OPEX -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
+        <div class="text-[10px] font-mono-tech uppercase text-slate-400 flex justify-between">
+          <span>OpEx Ciclo 1 (C18-C20)</span>
+          <span class="text-emerald-400">6.750 celdas</span>
+        </div>
+        <div class="text-base sm:text-lg font-bold font-mono-tech text-emerald-400">$420.000</div>
+        <div class="text-[11px] text-slate-400">1.153 L sustrato + Basacote + Semilla</div>
+      </div>
+
+      <!-- KPI 3: Total Modulo -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
+        <div class="text-[10px] font-mono-tech uppercase text-slate-400 flex justify-between">
+          <span>Total Físico (C01-C20)</span>
+          <span class="text-amber-400">+$200k Legal</span>
+        </div>
+        <div id="kpi-total-physical" class="text-base sm:text-lg font-bold font-mono-tech text-amber-300">$2.861.280</div>
+        <div id="kpi-total-project" class="text-[11px] text-slate-400">Proy. c/SpA+SAG: $3.061.280</div>
+      </div>
+
+      <!-- KPI 4: Fase 1 Verano vs Invierno -->
+      <div class="bg-slate-950/80 border border-slate-800 rounded-lg px-3 py-2">
+        <div class="text-[10px] font-mono-tech uppercase text-slate-400 flex justify-between">
+          <span>Caja Fase 1 (Verano 2027)</span>
+          <span class="text-indigo-400">Obra + Riego</span>
+        </div>
+        <div id="kpi-summer-cash" class="text-base sm:text-lg font-bold font-mono-tech text-indigo-300">$2.128.780</div>
+        <div class="text-[11px] text-slate-400">Diferido Invierno (C16,C18-20): $732.500</div>
+      </div>
+
+      <!-- KPI 5: Sawmill Discount Simulator -->
+      <div class="bg-slate-950/80 border border-sky-500/30 rounded-lg px-3 py-2 col-span-2">
+        <div class="flex items-center justify-between text-xs mb-1">
+          <span class="font-semibold text-sky-300 flex items-center gap-1">
+            🌲 Simulador Compra en Aserradero Local (C01, C02, C03, C08 = $686.180 base):
+          </span>
+          <span id="sawmill-discount-badge" class="font-mono-tech font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/30">
+            0% Dcto. (Ahorro: $0)
+          </span>
+        </div>
+        <div class="flex items-center gap-3">
+          <input id="sawmill-slider" type="range" min="0" max="30" step="5" value="0" oninput="updateSawmillDiscount(this.value)" class="w-full h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
+          <span class="text-[11px] font-mono-tech text-slate-400 whitespace-nowrap">0%–30%</span>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN WORKSPACE GRID -->
+  <main class="flex-1 max-w-[1800px] w-full mx-auto p-3 grid grid-cols-1 lg:grid-cols-12 gap-3">
+
+    <!-- LEFT / CENTER COLUMN: 3D & 2D CAD VIEWPORTS (8 cols in split mode) -->
+    <div id="cad-viewports-col" class="lg:col-span-8 flex flex-col gap-3">
+
+      <!-- LAYER FILTER & GLOBAL CAD CONTROLS -->
+      <div class="bg-slate-900/90 border border-slate-800 rounded-xl p-2.5 flex flex-wrap items-center justify-between gap-2">
+        <div class="flex items-center gap-1.5 flex-wrap">
+          <span class="text-[11px] font-mono-tech uppercase text-slate-400 mr-1">Capas CAD:</span>
+          <button onclick="toggleLayer('sub1')" id="layer-btn-sub1" class="px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-amber-500/50 bg-amber-500/20 text-amber-200 transition">
+            ✓ 1.Estructura/Techo
+          </button>
+          <button onclick="toggleLayer('sub2')" id="layer-btn-sub2" class="px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-emerald-500/50 bg-emerald-500/20 text-emerald-200 transition">
+            ✓ 2.Mesones/Piso
+          </button>
+          <button onclick="toggleLayer('sub3')" id="layer-btn-sub3" class="px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-sky-500/50 bg-sky-500/20 text-sky-200 transition">
+            ✓ 3.Hidráulica/Riego
+          </button>
+          <button onclick="toggleLayer('sub4')" id="layer-btn-sub4" class="px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-purple-500/50 bg-purple-500/20 text-purple-200 transition">
+            ✓ 4.Bandejas (125)
+          </button>
+          <button onclick="toggleLayer('dims')" id="layer-btn-dims" class="px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-slate-600 bg-slate-800 text-slate-200 transition">
+            ✓ Cotas (mm)
+          </button>
+        </div>
+
+        <div class="flex items-center gap-2">
+          <button onclick="toggleSnowSimulation()" id="btn-snow-sim" class="px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-cyan-500/40 bg-slate-800 text-cyan-300 hover:bg-cyan-500/20 transition">
+            ❄️ Simular 40 cm Nieve + Riego
+          </button>
+          <button onclick="selectPart(null)" class="px-2 py-1 rounded text-xs font-mono-tech text-slate-400 hover:text-white bg-slate-800/80 border border-slate-700">
+            Limpiar Selección
+          </button>
+        </div>
+      </div>
+
+      <!-- 3D INTERACTIVE VIEWPORT -->
+      <div id="panel-3d" class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl">
+        <!-- 3D Toolbar -->
+        <div class="bg-slate-950 px-3 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-2">
+            <span class="w-2.5 h-2.5 rounded-full bg-sky-400 animate-pulse"></span>
+            <h2 class="text-xs font-mono-tech font-bold uppercase tracking-wider text-slate-200">
+              VISOR 3D PARAMÉTRICO AL MILÍMETRO (X=4.000 × Y=9.000 × Z=3.800 mm)
+            </h2>
+          </div>
+          <!-- Camera Presets -->
+          <div class="flex items-center gap-1 flex-wrap">
+            <button onclick="set3DCamera('iso')" class="px-2 py-1 text-[11px] font-mono-tech bg-slate-800 hover:bg-sky-500 hover:text-slate-950 rounded text-slate-300 transition">Isométrica S-O</button>
+            <button onclick="set3DCamera('north')" class="px-2 py-1 text-[11px] font-mono-tech bg-slate-800 hover:bg-sky-500 hover:text-slate-950 rounded text-slate-300 transition">Cabezal Norte</button>
+            <button onclick="set3DCamera('section')" class="px-2 py-1 text-[11px] font-mono-tech bg-slate-800 hover:bg-sky-500 hover:text-slate-950 rounded text-slate-300 transition">Corte Frontal X-Z</button>
+            <button onclick="set3DCamera('side')" class="px-2 py-1 text-[11px] font-mono-tech bg-slate-800 hover:bg-sky-500 hover:text-slate-950 rounded text-slate-300 transition">Lateral Este Y-Z</button>
+            <button onclick="set3DCamera('top')" class="px-2 py-1 text-[11px] font-mono-tech bg-slate-800 hover:bg-sky-500 hover:text-slate-950 rounded text-slate-300 transition">Planta Superior</button>
+          </div>
+        </div>
+
+        <!-- 3D Canvas Container -->
+        <div class="relative w-full h-[430px] sm:h-[480px] cad-blueprint-bg select-none overflow-hidden">
+          <canvas id="canvas3d" class="w-full h-full block cursor-grab active:cursor-grabbing"></canvas>
+
+          <!-- Floating 3D Overlay Controls (Exploded View & Zoom) -->
+          <div class="absolute bottom-3 left-3 right-3 flex flex-wrap items-center justify-between gap-2 pointer-events-none">
+            <div class="bg-slate-950/90 border border-slate-800 rounded-lg px-3 py-2 pointer-events-auto flex items-center gap-3 shadow-lg backdrop-blur">
+              <label for="explode-slider" class="text-xs font-mono-tech text-sky-300 font-semibold whitespace-nowrap">
+                💥 Explosión Vertical Z:
+              </label>
+              <input id="explode-slider" type="range" min="0" max="100" value="0" oninput="updateExplode3D(this.value)" class="w-28 sm:w-36 h-1.5 bg-slate-800 rounded-lg cursor-pointer" />
+              <span id="explode-val" class="text-xs font-mono-tech text-white w-9 text-right">0%</span>
+            </div>
+
+            <div class="bg-slate-950/90 border border-slate-800 rounded-lg px-2.5 py-1.5 pointer-events-auto flex items-center gap-1.5 text-xs font-mono-tech text-slate-300 shadow-lg backdrop-blur">
+              <span>Arrastrar: Rotar 360° | Rueda: Zoom | Clic en pieza: Inspeccionar</span>
+              <button onclick="zoom3D(1.15)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-white font-bold">+</button>
+              <button onclick="zoom3D(0.87)" class="px-2 py-0.5 bg-slate-800 hover:bg-slate-700 rounded text-white font-bold">−</button>
+            </div>
+          </div>
+
+          <!-- Floating 3D Hover Tooltip -->
+          <div id="tooltip3d" class="hidden absolute pointer-events-none bg-slate-950/95 border border-sky-400/60 text-white px-3 py-2 rounded-lg shadow-2xl text-xs font-mono-tech z-20 max-w-xs"></div>
+        </div>
+      </div>
+
+      <!-- 2D TECHNICAL CAD BLUEPRINTS (SVG) -->
+      <div id="panel-2d" class="bg-slate-900 border border-slate-800 rounded-xl overflow-hidden flex flex-col shadow-xl">
+        <!-- 2D Sub-tabs & Zoom Controls -->
+        <div class="bg-slate-950 px-3 py-2 border-b border-slate-800 flex flex-wrap items-center justify-between gap-2">
+          <div class="flex items-center gap-1 flex-wrap">
+            <button id="subtab-plan" onclick="set2DView('plan')" class="px-2.5 py-1 rounded text-xs font-mono-tech font-semibold bg-sky-500 text-slate-950 transition">
+              1. Planta General X-Y (4.000 × 9.000 mm)
+            </button>
+            <button id="subtab-section" onclick="set2DView('section')" class="px-2.5 py-1 rounded text-xs font-mono-tech font-semibold bg-slate-800 text-slate-300 hover:text-white transition">
+              2. Corte Transversal A-A' (X-Z a 35°)
+            </button>
+            <button id="subtab-bench" onclick="set2DView('bench')" class="px-2.5 py-1 rounded text-xs font-mono-tech font-semibold bg-slate-800 text-slate-300 hover:text-white transition">
+              3. Detalle Mesón y Bandejas (1.250 mm)
+            </button>
+          </div>
+
+          <div class="flex items-center gap-1.5 font-mono-tech text-xs">
+            <button onclick="zoom2D(1.2)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-200" title="Acercar Plano">Zoom +</button>
+            <button onclick="zoom2D(0.83)" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-slate-200" title="Alejar Plano">Zoom −</button>
+            <button onclick="reset2DView()" class="px-2 py-1 bg-slate-800 hover:bg-slate-700 rounded text-sky-400">Centrar 1:1</button>
+          </div>
+        </div>
+
+        <!-- SVG 2D Viewport -->
+        <div id="svg-container" class="relative w-full h-[460px] sm:h-[520px] cad-blueprint-bg overflow-hidden cursor-grab active:cursor-grabbing select-none">
+          <svg id="cad2d-svg" class="w-full h-full" viewBox="-900 -1600 6000 11600" preserveAspectRatio="xMidYMid meet"></svg>
+
+          <div class="absolute bottom-2.5 right-3 bg-slate-950/90 border border-slate-800 rounded px-2.5 py-1 text-[11px] font-mono-tech text-slate-400 pointer-events-none">
+            Sistema Coordenado: Unidades en milímetros (mm) · NTN = ±0,00 mm · Clic en cualquier código [C01–C20] para desglose
+          </div>
+        </div>
+      </div>
+
+    </div>
+
+    <!-- RIGHT COLUMN: COMPONENT INSPECTOR & INTERACTIVE BOM TABLE (4 cols in split mode) -->
+    <div id="bom-inspector-col" class="lg:col-span-4 flex flex-col gap-3">
+
+      <!-- SELECTED PART TECHNICAL INSPECTOR CARD -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl p-3.5 shadow-xl">
+        <div class="flex items-center justify-between border-b border-slate-800 pb-2 mb-2.5">
+          <div class="flex items-center gap-2">
+            <span id="insp-code" class="px-2.5 py-0.5 rounded font-mono-tech font-bold text-xs bg-amber-400 text-slate-950">
+              C02
+            </span>
+            <h3 id="insp-name" class="text-sm font-bold text-white leading-tight">
+              Vigas Soleras y 7 Cerchas Tipo A (Pino IPV 2×6")
+            </h3>
+          </div>
+          <span id="insp-Share" class="text-xs font-mono-tech text-sky-400 font-semibold">8,8% del total</span>
+        </div>
+
+        <div class="grid grid-cols-2 gap-2 text-xs font-mono-tech mb-2.5">
+          <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">SUBSISTEMA</span>
+            <span id="insp-sub" class="text-slate-200 font-semibold">1. Estructura y Techumbre</span>
+          </div>
+          <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80">
+            <span class="text-[10px] text-slate-400 block">COTA VERTICAL Z (mm)</span>
+            <span id="insp-z" class="text-emerald-400 font-semibold">+2.400 a +3.800 mm</span>
+          </div>
+          <div class="bg-slate-950/80 p-2 rounded border border-slate-800/80 col-span-2">
+            <span class="text-[10px] text-slate-400 block">DIMENSIONES EXACTAS AL MILÍMETRO</span>
+            <span id="insp-dims" class="text-sky-300 font-semibold">41 × 138 × 3.200 mm (Pares L=2.808 mm a 35°, Pendolón 1.400 mm, Tirante 4.000 mm)</span>
+          </div>
+        </div>
+
+        <p id="insp-desc" class="text-xs text-slate-300 leading-relaxed mb-3 bg-slate-950/50 p-2.5 rounded border border-slate-800/60">
+          7 cerchas rígidas Tipo A con pendiente de 35° para evacuación por gravedad de hasta 40 cm de nieve húmeda (5.760 kg). Incluye alero de 300 mm por lado (366 mm inclinados) y tirante inferior a +2.400 mm que absorbe el empuje lateral.
+        </p>
+
+        <div class="grid grid-cols-3 gap-2 pt-2 border-t border-slate-800 text-center font-mono-tech">
+          <div>
+            <span class="text-[10px] text-slate-400 block">CANTIDAD</span>
+            <span id="insp-qty" class="text-sm font-bold text-white">26 un</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-400 block">COSTO UNIT.</span>
+            <span id="insp-unit-cost" class="text-sm font-bold text-slate-200">$9.690</span>
+          </div>
+          <div>
+            <span class="text-[10px] text-slate-400 block">SUBTOTAL</span>
+            <span id="insp-subtotal" class="text-sm font-bold text-amber-400">$251.940</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- MASTER BOM TABLE (C01 TO C20) -->
+      <div class="bg-slate-900 border border-slate-800 rounded-xl flex-1 flex flex-col overflow-hidden shadow-xl">
+        <div class="bg-slate-950 p-3 border-b border-slate-800 flex flex-col gap-2">
+          <div class="flex items-center justify-between">
+            <h3 class="text-xs font-mono-tech font-bold uppercase tracking-wider text-white">
+              TABLA MAESTRA DE CUBICACIÓN (C01–C20)
+            </h3>
+            <span class="text-[11px] font-mono-tech text-emerald-400">Clic en fila = Resaltar en 2D/3D</span>
+          </div>
+
+          <!-- Filter by Subsystem & Phase -->
+          <div class="flex gap-1.5">
+            <select id="bom-filter-sub" onchange="renderBOMTable()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono-tech text-slate-200 flex-1">
+              <option value="all">Todos los Subsistemas (C01–C20)</option>
+              <option value="sub1">Sub 1: Estructura y Techumbre ($1.078.200)</option>
+              <option value="sub2">Sub 2: Mesones y Drenaje Piso ($410.580)</option>
+              <option value="sub3">Sub 3: Hidráulica y Riego ($530.000)</option>
+              <option value="sub4">Sub 4: Contenedores y Flete ($422.500)</option>
+              <option value="sub5">Sub 5: OpEx Insumos Ciclo 1 ($420.000)</option>
+            </select>
+            <select id="bom-filter-phase" onchange="renderBOMTable()" class="bg-slate-900 border border-slate-700 rounded px-2 py-1 text-xs font-mono-tech text-slate-200">
+              <option value="all">Todas las Fases</option>
+              <option value="verano">Fase 1: Verano ($2.128.780)</option>
+              <option value="invierno">Fase 2: Invierno ($732.500)</option>
+            </select>
+          </div>
+        </div>
+
+        <!-- Scrollable BOM List -->
+        <div class="overflow-y-auto max-h-[580px] divide-y divide-slate-800/70" id="bom-table-body">
+          <!-- Populated dynamically by JS -->
+        </div>
+
+        <!-- BOM Footer Totals -->
+        <div class="bg-slate-950 p-3 border-t border-slate-800 font-mono-tech text-xs space-y-1">
+          <div class="flex justify-between text-slate-400">
+            <span>Subtotal Filtro Seleccionado:</span>
+            <span id="bom-filtered-total" class="font-bold text-white">$2.861.280 CLP</span>
+          </div>
+          <div class="flex justify-between text-slate-400">
+            <span>Formalización Legal (SpA + SAG + Ads):</span>
+            <span class="text-slate-200">$200.000 CLP</span>
+          </div>
+          <div class="flex justify-between text-amber-300 font-bold pt-1 border-t border-slate-800">
+            <span>INVERSIÓN TOTAL PROYECTO (CON LEGAL):</span>
+            <span id="bom-grand-total">$3.061.280 CLP</span>
+          </div>
+        </div>
+      </div>
+
+    </div>
+  </main>
+
+  <!-- COMPLETE JAVASCRIPT CAD 2D & 3D ENGINE -->
+  <script>
+    /*************************************************************************
+     * 1. MASTER DATABASE OF COMPONENTS (C01 TO C20) WITH MILLIMETER GEOMETRY
+     *************************************************************************/
+    const BOM_DATA = [
+      {
+        code: 'C01', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Pilares Polín Impregnado Calibrado 4–5"',
+        dims: 'Ø115 × 3.000 mm (600 mm empotrado / 2.400 mm libres)',
+        zRange: '-600 a +2.400 mm',
+        qty: 12, unit: 'un', unitCost: 11500, subtotal: 138000,
+        isWood: true, phase: 'verano', share: 4.8, color: '#d97706',
+        desc: '12 columnas estructurales dispuestas en 2 hileras (Eje A en X=0..100 mm y Eje B en X=3.900..4.000 mm) y 6 ejes longitudinales cada 1.800 mm (Y=0, 1.800, 3.600, 5.400, 7.200, 9.000 mm).'
+      },
+      {
+        code: 'C02', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Vigas Soleras y 7 Cerchas Tipo A (IPV 2×6")',
+        dims: '41 × 138 × 3.200 mm (Pares L=2.808 mm a 35°, Tirante 4.000 mm)',
+        zRange: '+2.400 a +3.800 mm',
+        qty: 26, unit: 'un', unitCost: 9690, subtotal: 251940,
+        isWood: true, phase: 'verano', share: 8.8, color: '#f59e0b',
+        desc: '7 cerchas rígidas Tipo A con pendiente de 35° (pendolón central de 1.400 mm sobre hombro +2.400 mm hasta cumbrera +3.800 mm). Pares de 2.442 mm + 366 mm de alero = 2.808 mm por agua.'
+      },
+      {
+        code: 'C03', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Costaneras de Techo y Riostras (IPV 2×4")',
+        dims: '41 × 90 × 3.200 mm (12 líneas longitudinales c/550 mm)',
+        zRange: '+2.450 a +3.750 mm',
+        qty: 24, unit: 'un', unitCost: 6440, subtotal: 154560,
+        isWood: true, phase: 'verano', share: 5.4, color: '#fbbf24',
+        desc: '6 filas de costaneras por faldón (12 totales) espaciadas cada 550 mm sobre los pares inclinados para evitar pandeo del policarbonato bajo 160 kg/m² de nieve húmeda.'
+      },
+      {
+        code: 'C04', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Planchas Policarbonato Ondulado Transp. 0,7 mm',
+        dims: '0,7 × 810 × 3.000 mm (760 mm ancho útil traslapado; 9/agua)',
+        zRange: '+2.200 a +3.820 mm',
+        qty: 18, unit: 'pl', unitCost: 17150, subtotal: 308700,
+        isWood: false, phase: 'verano', share: 10.8, color: '#38bdf8',
+        desc: 'Cubierta rígida impermeable con filtro UV. 9 planchas por faldón cubren los 9.000 mm de largo; el largo de 3.000 mm cubre los 2.808 mm del par dejando 192 mm de goterón libre.'
+      },
+      {
+        code: 'C05', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Fundaciones: 12 Poyos Hormigón H20 + Acero',
+        dims: '400 × 400 × 600 mm c/u (0,096 m³/poyo; 1,152 m³ totales)',
+        zRange: '-600 a ±0,00 mm',
+        qty: 1, unit: 'gl', unitCost: 85000, subtotal: 85000,
+        isWood: false, phase: 'verano', share: 3.0, color: '#64748b',
+        desc: 'Dados de fundación en hormigón H20 con fierro estriado cruzado en la base del polín para resistir punzonamiento vertical (5,8 ton de nieve) y succión de viento.'
+      },
+      {
+        code: 'C06', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Ferretería Estructural Galvanizada Completa',
+        dims: 'Pernos coche Ø3/8" × 150 mm, escuadras y tornillos EPDM',
+        zRange: '+850 a +3.800 mm',
+        qty: 1, unit: 'gl', unitCost: 75000, subtotal: 75000,
+        isWood: false, phase: 'verano', share: 2.6, color: '#94a3b8',
+        desc: 'Uniones apernadas de alta resistencia en nudos de cerchas Tipo A y fijaciones autoperforantes con golilla de neopreno EPDM en todas las crestas de onda.'
+      },
+      {
+        code: 'C07', subId: 'sub1', subName: '1. Estructura y Techumbre',
+        name: 'Malla Raschel 65% Sombra (Cielo y Cortinas)',
+        dims: 'Rollo 4.200 × 50.000 mm (Cielo corredizo a +2.400 mm)',
+        zRange: '+850 a +2.400 mm',
+        qty: 1, unit: 'rll', unitCost: 65000, subtotal: 65000,
+        isWood: false, phase: 'verano', share: 2.3, color: '#10b981',
+        desc: 'Cielo raso retráctil instalado sobre alambre galvanizado a cota +2.400 mm (reduce insolación estival y guarda calor nocturno en heladas) más faldones laterales ventilados.'
+      },
+      {
+        code: 'C08', subId: 'sub2', subName: '2. Mesones y Drenaje Piso',
+        name: 'Bastidores, Travesaños y Patas Mesones (IPV 2×4")',
+        dims: '2 mesones de 1.250 × 8.000 mm a cota +850 mm (c/800 mm)',
+        zRange: '±0,00 a +891 mm',
+        qty: 22, unit: 'un', unitCost: 6440, subtotal: 141680,
+        isWood: true, phase: 'verano', share: 5.0, color: '#059669',
+        desc: '2 estructuras portantes elevadas a +850 mm del suelo (Mesón A en X=200..1.450 mm y Mesón B en X=2.550..3.800 mm, desde Y=1.000 a 9.000 mm) con riostra inferior a +250 mm.'
+      },
+      {
+        code: 'C09', subId: 'sub2', subName: '2. Mesones y Drenaje Piso',
+        name: 'Malla Estructural Acma C-92 + Anticorrosivo',
+        dims: 'Paños 2.600 × 5.000 mm, cuadrícula 150 × 150 mm, Ø4,2 mm',
+        zRange: '+845 a +850 mm',
+        qty: 3, unit: 'pl', unitCost: 26000, subtotal: 78000,
+        isWood: false, phase: 'verano', share: 2.7, color: '#34d399',
+        desc: 'Parrilla de acero electrosoldado que soporta el peso húmedo de las bandejas (hasta 45 kg/m²) sin deformarse entre los travesaños de madera espaciados cada 800 mm.'
+      },
+      {
+        code: 'C10', subId: 'sub2', subName: '2. Mesones y Drenaje Piso',
+        name: 'Malla Soldada Galvanizada 1/2" Portabandejas',
+        dims: 'Rollos 900 × 10.000 mm, abertura 12,7 × 12,7 mm, Ø0,9 mm',
+        zRange: '+850 mm',
+        qty: 3, unit: 'rll', unitCost: 25300, subtotal: 75900,
+        isWood: false, phase: 'verano', share: 2.7, color: '#6ee7b7',
+        desc: 'Superficie de apoyo continuo sobre la malla Acma para que las bandejas speedling apoyen 100% planas mientras permite el paso libre de aire para la poda radicular aérea.'
+      },
+      {
+        code: 'C11', subId: 'sub2', subName: '2. Mesones y Drenaje Piso',
+        name: 'Geotextil Antimaleza + Cama Gravilla Drenante',
+        dims: '4.000 × 9.000 × 80 mm espesor (3,0 m³ árido limpio)',
+        zRange: '±0,00 a +80 mm',
+        qty: 1, unit: 'gl', unitCost: 115000, subtotal: 115000,
+        isWood: false, phase: 'verano', share: 4.0, color: '#475569',
+        desc: 'Sello completo de los 36,0 m² de suelo con tela geotextil y 80 mm de gravilla drenante que elimina el barro, las malezas y salpicaduras de patógenos hacia los mesones.'
+      },
+      {
+        code: 'C12', subId: 'sub3', subName: '3. Hidráulica y Riego',
+        name: 'Estanque Acumulación Agua 1.000 L PEAD + Fitting',
+        dims: 'Ø1.100 × 1.250 mm alto (Ubicado en exterior Norte Y < 0)',
+        zRange: '±0,00 a +1.250 mm',
+        qty: 1, unit: 'un', unitCost: 165000, subtotal: 165000,
+        isWood: false, phase: 'verano', share: 5.8, color: '#0284c7',
+        desc: 'Reserva autónoma de agua de 1.000 litros en el cabezal exterior Norte para garantizar riegos cortos y frecuentes en verano incluso ante cortes de suministro rural.'
+      },
+      {
+        code: 'C13', subId: 'sub3', subName: '3. Hidráulica y Riego',
+        name: 'Bomba Periférica/Centrífuga 0,5–1,0 HP + Caseta',
+        dims: 'Caseta aislada 600 × 600 × 700 mm (Presión 2,0–2,5 bar)',
+        zRange: '±0,00 a +700 mm',
+        qty: 1, unit: 'gl', unitCost: 95000, subtotal: 95000,
+        isWood: false, phase: 'verano', share: 3.3, color: '#0ea5e9',
+        desc: 'Grupo presurizador automático con presostato protegido en caseta térmica contra heladas invernales en Molco Alto, entregando 2,5 bar constantes a la microaspersión.'
+      },
+      {
+        code: 'C14', subId: 'sub3', subName: '3. Hidráulica y Riego',
+        name: 'Controlador Wi-Fi 4 Zonas + 2 EV 1" + Filtro 120m',
+        dims: 'Manifold en cabezal interior (Y=0 a 1.000 mm, Z=+1.100 mm)',
+        zRange: '+900 a +1.400 mm',
+        qty: 1, unit: 'gl', unitCost: 185000, subtotal: 185000,
+        isWood: false, phase: 'verano', share: 6.5, color: '#38bdf8',
+        desc: 'Cerebro de automatización monitoreable desde Santiago con 2 zonas independientes (Zona A: Nothofagus sol; Zona B: especies higrófilas sombra) y filtro de anillas de 120 mesh.'
+      },
+      {
+        code: 'C15', subId: 'sub3', subName: '3. Hidráulica y Riego',
+        name: '2 Líneas HDPE Ø25 mm + 16 Microaspersores Inv.',
+        dims: '2 ramales de 8.000 mm a cota +1.850 mm (emisores c/1.000 mm)',
+        zRange: '+1.850 mm',
+        qty: 1, unit: 'gl', unitCost: 85000, subtotal: 85000,
+        isWood: false, phase: 'verano', share: 3.0, color: '#7dd3fc',
+        desc: '2 tuberías matrices colgadas a +1.850 mm (X=825 mm y X=3.175 mm) con 8 microaspersores invertidos cada una (a 880 mm sobre las bandejas) con válvula antidrenante.'
+      },
+      {
+        code: 'C16', subId: 'sub4', subName: '4. Contenedores y Logística',
+        name: 'Bandejas Speedling Polipropileno Rígido (54–84 cav.)',
+        dims: '500 × 320 × 120 mm c/u (125 bandejas = 20,0 m² exactos)',
+        zRange: '+850 a +970 mm',
+        qty: 125, unit: 'un', unitCost: 2500, subtotal: 312500,
+        isWood: false, phase: 'invierno', share: 10.9, color: '#a855f7',
+        desc: '125 bandejas forestales con estrías verticales internas antiespiralamiento. Dispuestas en 3 columnas híbridas por mesón (500 + 320 + 320 = 1.140 mm + 2×55 mm baranda = 1.250 mm).'
+      },
+      {
+        code: 'C17', subId: 'sub4', subName: '4. Contenedores y Logística',
+        name: 'Fletes Villarrica a Molco Alto + Imprevistos Obra',
+        dims: 'Transporte carga pesada (~3,5 ton) a cota 620 msnm',
+        zRange: 'Logística Terreno',
+        qty: 1, unit: 'gl', unitCost: 110000, subtotal: 110000,
+        isWood: false, phase: 'verano', share: 3.8, color: '#c084fc',
+        desc: 'Traslado consolidado de áridos, maderas impregnadas, mallas Acma y planchas de 3.000 mm desde proveedores en Villarrica/Freire hasta el predio en Molco Alto.'
+      },
+      {
+        code: 'C18', subId: 'sub5', subName: '5. OpEx Insumos Ciclo 1',
+        name: 'Sustrato Técnico (Coco + Corteza Pino + Perlita)',
+        dims: '1.153 L preparados (945 L geométricos + 22% compactación)',
+        zRange: '+850 a +970 mm (Interior C16)',
+        qty: 1, unit: 'gl', unitCost: 185000, subtotal: 185000,
+        isWood: false, phase: 'invierno', share: 6.5, color: '#eab308',
+        desc: 'Mezcla porosa e inerte libre de patógenos para llenar 6.750 cavidades de 140 cc, garantizando aireación radicular y drenaje rápido en clima húmedo del sur.'
+      },
+      {
+        code: 'C19', subId: 'sub5', subName: '5. OpEx Insumos Ciclo 1',
+        name: 'Fertilizante Controlado Basacote Plus 9M (25 kg)',
+        dims: 'Dosis 4,5 g/L (5,2 kg usados Ciclo 1; 19,8 kg reserva)',
+        zRange: '+850 a +970 mm (Interior C16)',
+        qty: 1, unit: 'sc', unitCost: 115000, subtotal: 115000,
+        isWood: false, phase: 'invierno', share: 4.0, color: '#facc15',
+        desc: 'Nutrición encapsulada de liberación controlada por temperatura durante 9 meses; alimenta la planta automáticamente mientras estudias en Santiago.'
+      },
+      {
+        code: 'C20', subId: 'sub5', subName: '5. OpEx Insumos Ciclo 1',
+        name: 'Semillas Certificadas + Fungicida Preventivo',
+        dims: 'Lote para 6.750 alvéolos (Nothofagus, Arrayán, Avellano)',
+        zRange: '+960 mm (Siembra)',
+        qty: 1, unit: 'gl', unitCost: 120000, subtotal: 120000,
+        isWood: false, phase: 'invierno', share: 4.2, color: '#4ade80',
+        desc: 'Semillas con trazabilidad genética de zona lacustre más control preventivo de Damping-off (Pythium/Phytophthora) durante la emergencia primaveral.'
+      }
+    ];
+
+    /*************************************************************************
+     * 2. APPLICATION STATE
+     *************************************************************************/
+    const state = {
+      selectedCode: 'C02',
+      hoveredCode: null,
+      sawmillDiscountPct: 0,
+      explodePct: 0,
+      snowSimActive: false,
+      active2DView: 'plan', // 'plan' | 'section' | 'bench'
+      layers: {
+        sub1: true,
+        sub2: true,
+        sub3: true,
+        sub4: true,
+        dims: true
+      },
+      // 2D SVG Pan/Zoom state
+      svgViewBox: { x: -900, y: -1600, w: 6000, h: 11600 },
+      isPanning2D: false,
+      panStart2D: { x: 0, y: 0 },
+      // 3D Camera Orbit state
+      cam3D: {
+        yaw: -0.68,
+        pitch: 0.44,
+        zoom: 1.0,
+        panX: 0,
+        panY: 20
+      },
+      isDragging3D: false,
+      dragStart3D: { x: 0, y: 0 },
+      projectedPolys3D: [] // For interactive 3D picking
+    };
+
+    function formatCLP(val) {
+      return '$' + Math.round(val).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function getAdjustedItemCost(item) {
+      if (item.isWood && state.sawmillDiscountPct > 0) {
+        return Math.round(item.subtotal * (1 - state.sawmillDiscountPct / 100));
+      }
+      return item.subtotal;
+    }
+
+    /*************************************************************************
+     * 3. FINANCIAL SIMULATOR & BOM TABLE RENDERING
+     *************************************************************************/
+    function updateSawmillDiscount(val) {
+      state.sawmillDiscountPct = Number(val);
+      const baseWood = 686180; // C01 + C02 + C03 + C08
+      const savings = Math.round(baseWood * (state.sawmillDiscountPct / 100));
+      const adjCapex = 2441280 - savings;
+      const adjPhysical = adjCapex + 420000;
+      const adjProject = adjPhysical + 200000;
+      const adjSummer = adjCapex - 312500;
+
+      document.getElementById('sawmill-discount-badge').textContent =
+        `${state.sawmillDiscountPct}% Dcto. (Ahorro: ${formatCLP(savings)})`;
+      document.getElementById('kpi-capex').textContent = formatCLP(adjCapex);
+      document.getElementById('kpi-capex-sub').textContent =
+        savings > 0 ? `Ahorro madera IPV: -${formatCLP(savings)}` : 'Precio base retail verificado';
+      document.getElementById('kpi-total-physical').textContent = formatCLP(adjPhysical);
+      document.getElementById('kpi-total-project').textContent = `Proy. c/SpA+SAG: ${formatCLP(adjProject)}`;
+      document.getElementById('kpi-summer-cash').textContent = formatCLP(adjSummer);
+
+      renderBOMTable();
+      updateInspectorCard();
+    }
+
+    function renderBOMTable() {
+      const subFilter = document.getElementById('bom-filter-sub').value;
+      const phaseFilter = document.getElementById('bom-filter-phase').value;
+      const tbody = document.getElementById('bom-table-body');
+      tbody.innerHTML = '';
+
+      let filteredSum = 0;
+      let totalAll = 0;
+
+      BOM_DATA.forEach(item => {
+        const adjSubtotal = getAdjustedItemCost(item);
+        totalAll += adjSubtotal;
+
+        if (subFilter !== 'all' && item.subId !== subFilter) return;
+        if (phaseFilter !== 'all' && item.phase !== phaseFilter) return;
+
+        filteredSum += adjSubtotal;
+        const isSelected = state.selectedCode === item.code;
+
+        const row = document.createElement('div');
+        row.className = `p-2.5 cursor-pointer transition flex items-center justify-between gap-2 text-xs ${
+          isSelected
+            ? 'bg-sky-500/20 border-l-4 border-amber-400'
+            : 'hover:bg-slate-800/70'
+        }`;
+        row.onclick = () => selectPart(item.code);
+
+        row.innerHTML = `
+          <div class="flex items-start gap-2.5 min-w-0">
+            <span class="px-1.5 py-0.5 rounded font-mono-tech font-bold text-[11px] shrink-0"
+                  style="background:${item.color}25; color:${item.color}; border:1px solid ${item.color}60">
+              ${item.code}
+            </span>
+            <div class="min-w-0">
+              <div class="font-semibold text-slate-100 truncate flex items-center gap-1.5">
+                <span>${item.name}</span>
+                ${item.isWood ? '<span class="text-[10px] px-1 rounded bg-emerald-500/20 text-emerald-300 font-mono-tech">IPV</span>' : ''}
+              </div>
+              <div class="text-[11px] font-mono-tech text-slate-400 truncate">${item.dims}</div>
+            </div>
+          </div>
+          <div class="text-right font-mono-tech shrink-0">
+            <div class="font-bold text-slate-100">${formatCLP(adjSubtotal)}</div>
+            <div class="text-[10px] text-slate-400">${item.qty} ${item.unit} · ${item.phase === 'verano' ? 'Verano' : 'Invierno'}</div>
+          </div>
+        `;
+        tbody.appendChild(row);
+      });
+
+      document.getElementById('bom-filtered-total').textContent = `${formatCLP(filteredSum)} CLP`;
+      document.getElementById('bom-grand-total').textContent = `${formatCLP(totalAll + 200000)} CLP`;
+    }
+
+    function selectPart(code) {
+      state.selectedCode = code;
+      updateInspectorCard();
+      renderBOMTable();
+      render2DCAD();
+      render3DCAD();
+    }
+
+    function updateInspectorCard() {
+      const item = BOM_DATA.find(d => d.code === state.selectedCode) || BOM_DATA[1];
+      const adjSubtotal = getAdjustedItemCost(item);
+      const adjUnit = Math.round(adjSubtotal / item.qty);
+
+      document.getElementById('insp-code').textContent = item.code;
+      document.getElementById('insp-name').textContent = item.name;
+      document.getElementById('insp-Share').textContent = `${item.share}% del módulo`;
+      document.getElementById('insp-sub').textContent = item.subName;
+      document.getElementById('insp-z').textContent = item.zRange;
+      document.getElementById('insp-dims').textContent = item.dims;
+      document.getElementById('insp-desc').textContent = item.desc;
+      document.getElementById('insp-qty').textContent = `${item.qty} ${item.unit}`;
+      document.getElementById('insp-unit-cost').textContent = formatCLP(adjUnit);
+      document.getElementById('insp-subtotal').textContent = formatCLP(adjSubtotal);
+    }
+
+    /*************************************************************************
+     * 4. LAYER & VIEW CONTROLS
+     *************************************************************************/
+    function toggleLayer(layerKey) {
+      state.layers[layerKey] = !state.layers[layerKey];
+      const btn = document.getElementById(`layer-btn-${layerKey}`);
+      if (state.layers[layerKey]) {
+        btn.classList.remove('opacity-40', 'line-through');
+      } else {
+        btn.classList.add('opacity-40', 'line-through');
+      }
+      render2DCAD();
+      render3DCAD();
+    }
+
+    function toggleSnowSimulation() {
+      state.snowSimActive = !state.snowSimActive;
+      const btn = document.getElementById('btn-snow-sim');
+      if (state.snowSimActive) {
+        btn.className = 'px-2.5 py-1 rounded text-xs font-mono-tech font-bold border border-cyan-400 bg-cyan-400 text-slate-950 shadow-lg shadow-cyan-500/30 transition';
+      } else {
+        btn.className = 'px-2.5 py-1 rounded text-xs font-mono-tech font-medium border border-cyan-500/40 bg-slate-800 text-cyan-300 hover:bg-cyan-500/20 transition';
+      }
+      render2DCAD();
+      render3DCAD();
+    }
+
+    function setMainLayout(mode) {
+      const cadCol = document.getElementById('cad-viewports-col');
+      const bomCol = document.getElementById('bom-inspector-col');
+      const panel3d = document.getElementById('panel-3d');
+      const panel2d = document.getElementById('panel-2d');
+
+      ['split', '3d', '2d', 'bom'].forEach(t => {
+        const b = document.getElementById(`tab-${t}`);
+        if (t === mode) {
+          b.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 bg-sky-500 text-slate-950 shadow';
+        } else {
+          b.className = 'px-3 py-1.5 rounded-md text-xs font-semibold transition flex items-center gap-1.5 text-slate-300 hover:text-white hover:bg-slate-800';
+        }
+      });
+
+      if (mode === 'split') {
+        cadCol.className = 'lg:col-span-8 flex flex-col gap-3';
+        bomCol.className = 'lg:col-span-4 flex flex-col gap-3';
+        panel3d.classList.remove('hidden');
+        panel2d.classList.remove('hidden');
+      } else if (mode === '3d') {
+        cadCol.className = 'lg:col-span-8 flex flex-col gap-3';
+        bomCol.className = 'lg:col-span-4 flex flex-col gap-3';
+        panel3d.classList.remove('hidden');
+        panel2d.classList.add('hidden');
+      } else if (mode === '2d') {
+        cadCol.className = 'lg:col-span-8 flex flex-col gap-3';
+        bomCol.className = 'lg:col-span-4 flex flex-col gap-3';
+        panel3d.classList.add('hidden');
+        panel2d.classList.remove('hidden');
+      } else if (mode === 'bom') {
+        cadCol.className = 'hidden';
+        bomCol.className = 'lg:col-span-12 grid grid-cols-1 lg:grid-cols-3 gap-4';
+      }
+
+      setTimeout(() => {
+        resize3DCanvas();
+        render2DCAD();
+      }, 30);
+    }
+
+    /*************************************************************************
+     * 5. 2D VECTOR CAD ENGINE (SVG) — MILLIMETER ACCURATE
+     *************************************************************************/
+    function set2DView(viewName) {
+      state.active2DView = viewName;
+      ['plan', 'section', 'bench'].forEach(v => {
+        const btn = document.getElementById(`subtab-${v}`);
+        if (v === viewName) {
+          btn.className = 'px-2.5 py-1 rounded text-xs font-mono-tech font-semibold bg-sky-500 text-slate-950 transition';
+        } else {
+          btn.className = 'px-2.5 py-1 rounded text-xs font-mono-tech font-semibold bg-slate-800 text-slate-300 hover:text-white transition';
+        }
+      });
+      reset2DView();
+    }
+
+    function reset2DView() {
+      if (state.active2DView === 'plan') {
+        state.svgViewBox = { x: -1100, y: -1750, w: 6200, h: 11700 };
+      } else if (state.active2DView === 'section') {
+        state.svgViewBox = { x: -1100, y: -1200, w: 6200, h: 6100 };
+      } else if (state.active2DView === 'bench') {
+        state.svgViewBox = { x: -220, y: -320, w: 1700, h: 1650 };
+      }
+      apply2DViewBox();
+      render2DCAD();
+    }
+
+    function zoom2D(factor) {
+      const vb = state.svgViewBox;
+      const cx = vb.x + vb.w / 2;
+      const cy = vb.y + vb.h / 2;
+      vb.w = vb.w / factor;
+      vb.h = vb.h / factor;
+      vb.x = cx - vb.w / 2;
+      vb.y = cy - vb.h / 2;
+      apply2DViewBox();
+    }
+
+    function apply2DViewBox() {
+      const svg = document.getElementById('cad2d-svg');
+      const vb = state.svgViewBox;
+      svg.setAttribute('viewBox', `${vb.x} ${vb.y} ${vb.w} ${vb.h}`);
+    }
+
+    function partClass(code) {
+      return `cad-part ${state.selectedCode === code ? 'selected-part' : ''}`;
+    }
+
+    function render2DCAD() {
+      const svg = document.getElementById('cad2d-svg');
+      if (state.active2DView === 'plan') {
+        svg.innerHTML = build2DPlanSVG();
+      } else if (state.active2DView === 'section') {
+        svg.innerHTML = build2DSectionSVG();
+      } else {
+        svg.innerHTML = build2DBenchDetailSVG();
+      }
+    }
+
+    // Helper for SVG Dimension Arrows
+    function svgDim(x1, y1, x2, y2, label, offset = 0, fontSize = 115, color = '#38bdf8') {
+      if (!state.layers.dims) return '';
+      const dx = x2 - x1;
+      const dy = y2 - y1;
+      const len = Math.hypot(dx, dy) || 1;
+      const nx = -dy / len;
+      const ny = dx / len;
+      const ox1 = x1 + nx * offset;
+      const oy1 = y1 + ny * offset;
+      const ox2 = x2 + nx * offset;
+      const oy2 = y2 + ny * offset;
+      const mx = (ox1 + ox2) / 2;
+      const my = (oy1 + oy2) / 2;
+      const angle = Math.atan2(dy, dx) * (180 / Math.PI);
+
+      return `
+        <g class="pointer-events-none" opacity="0.92">
+          <line x1="${x1}" y1="${y1}" x2="${ox1}" y2="${oy1}" stroke="${color}" stroke-width="${fontSize * 0.08}" stroke-dasharray="${fontSize * 0.25},${fontSize * 0.25}" opacity="0.5"/>
+          <line x1="${x2}" y1="${y2}" x2="${ox2}" y2="${oy2}" stroke="${color}" stroke-width="${fontSize * 0.08}" stroke-dasharray="${fontSize * 0.25},${fontSize * 0.25}" opacity="0.5"/>
+          <line x1="${ox1}" y1="${oy1}" x2="${ox2}" y2="${oy2}" stroke="${color}" stroke-width="${fontSize * 0.12}" />
+          <circle cx="${ox1}" cy="${oy1}" r="${fontSize * 0.22}" fill="${color}" />
+          <circle cx="${ox2}" cy="${oy2}" r="${fontSize * 0.22}" fill="${color}" />
+          <g transform="translate(${mx}, ${my}) rotate(${angle > 90 || angle < -90 ? angle + 180 : angle})">
+            <rect x="${-label.length * fontSize * 0.32}" y="${-fontSize * 0.85}" width="${label.length * fontSize * 0.64}" height="${fontSize * 1.15}" rx="${fontSize * 0.18}" fill="#060b14" stroke="${color}" stroke-width="${fontSize * 0.06}"/>
+            <text x="0" y="${-fontSize * 0.12}" fill="#f8fafc" font-family="JetBrains Mono" font-size="${fontSize * 0.78}" font-weight="600" text-anchor="middle">${label}</text>
+          </g>
+        </g>
+      `;
+    }
+
+    // 2D VIEW 1: PLANTA GENERAL X-Y (4.000 x 9.000 mm)
+    function build2DPlanSVG() {
+      let html = '';
+
+      // 1. Gravel & Geotextile Floor (C11)
+      if (state.layers.sub2) {
+        html += `
+          <rect onclick="selectPart('C11')" class="${partClass('C11')}" x="0" y="0" width="4000" height="9000"
+                fill="#1e293b" fill-opacity="0.65" stroke="#64748b" stroke-width="20"/>
+          <text x="2000" y="4700" fill="#94a3b8" font-family="JetBrains Mono" font-size="115" text-anchor="middle" pointer-events="none">
+            PASILLO CENTRAL LIBRE (1.100 × 8.000 mm) · Geotextil + 80 mm Gravilla [C11]
+          </text>
+        `;
+      }
+
+      // 2. Roof Eaves Projection (4.600 x 9.000 mm, C04)
+      if (state.layers.sub1) {
+        html += `
+          <rect onclick="selectPart('C04')" class="${partClass('C04')}" x="-300" y="0" width="4600" height="9000"
+                fill="none" stroke="#38bdf8" stroke-width="18" stroke-dasharray="90,60"/>
+          <text x="-260" y="8880" fill="#38bdf8" font-family="JetBrains Mono" font-size="95">
+            Proyección Cubierta Policarbonato 4.600 mm (Aleros 300 mm) [C04]
+          </text>
+        `;
+      }
+
+      // 3. Exterior North Hydraulic Header: Tank 1000L (C12) & Pump House (C13)
+      if (state.layers.sub3) {
+        html += `
+          <!-- Tank C12 Ø1100 mm -->
+          <g onclick="selectPart('C12')" class="${partClass('C12')}">
+            <circle cx="950" cy="-720" r="550" fill="#0284c7" fill-opacity="0.45" stroke="#38bdf8" stroke-width="22"/>
+            <circle cx="950" cy="-720" r="140" fill="#0369a1" stroke="#7dd3fc" stroke-width="12"/>
+            <text x="950" y="-690" fill="#ffffff" font-family="JetBrains Mono" font-size="105" font-weight="700" text-anchor="middle">[C12] Estanque 1.000L</text>
+            <text x="950" y="-550" fill="#bae6fd" font-family="JetBrains Mono" font-size="85" text-anchor="middle">Ø1.100 × 1.250 mm</text>
+          </g>
+          <!-- Pump Caseta C13 600x600 mm -->
+          <g onclick="selectPart('C13')" class="${partClass('C13')}">
+            <rect x="1750" y="-1020" width="600" height="600" rx="30" fill="#0ea5e9" fill-opacity="0.4" stroke="#38bdf8" stroke-width="20"/>
+            <text x="2050" y="-730" fill="#ffffff" font-family="JetBrains Mono" font-size="92" font-weight="700" text-anchor="middle">[C13] Bomba</text>
+            <text x="2050" y="-600" fill="#bae6fd" font-family="JetBrains Mono" font-size="80" text-anchor="middle">600×600 mm</text>
+          </g>
+          <!-- Suction & Discharge Pipe -->
+          <line x1="1500" y1="-720" x2="1750" y2="-720" stroke="#38bdf8" stroke-width="26"/>
+          <line x1="2050" y1="-420" x2="2050" y2="250" stroke="#38bdf8" stroke-width="26"/>
+          <!-- Manifold & Controller C14 inside North Header Y=0..1000 -->
+          <g onclick="selectPart('C14')" class="${partClass('C14')}">
+            <rect x="1550" y="180" width="900" height="420" rx="25" fill="#0284c7" fill-opacity="0.55" stroke="#7dd3fc" stroke-width="18"/>
+            <text x="2000" y="370" fill="#ffffff" font-family="JetBrains Mono" font-size="92" font-weight="700" text-anchor="middle">[C14] Manifold Wi-Fi + 2 EV 1"</text>
+            <text x="2000" y="500" fill="#e0f2fe" font-family="JetBrains Mono" font-size="80" text-anchor="middle">Cabezal Norte (Y = 0 a 1.000 mm)</text>
+          </g>
+        `;
+      }
+
+      // 4. Elevated Benches A & B (1.250 x 8.000 mm each, Y=1.000 to 9.000 mm)
+      if (state.layers.sub2) {
+        // Mesón A (X=200 to 1450)
+        html += `
+          <g onclick="selectPart('C08')" class="${partClass('C08')}">
+            <rect x="200" y="1000" width="1250" height="8000" fill="#065f46" fill-opacity="0.45" stroke="#10b981" stroke-width="24"/>
+            <text x="825" y="1320" fill="#a7f3d0" font-family="JetBrains Mono" font-size="105" font-weight="700" text-anchor="middle">
+              MESÓN A [C08/C09/C10] (1.250 × 8.000 mm)
+            </text>
+          </g>
+          <!-- Mesón B (X=2550 to 3800) -->
+          <g onclick="selectPart('C08')" class="${partClass('C08')}">
+            <rect x="2550" y="1000" width="1250" height="8000" fill="#065f46" fill-opacity="0.45" stroke="#10b981" stroke-width="24"/>
+            <text x="3175" y="1320" fill="#a7f3d0" font-family="JetBrains Mono" font-size="105" font-weight="700" text-anchor="middle">
+              MESÓN B [C08/C09/C10] (1.250 × 8.000 mm)
+            </text>
+          </g>
+        `;
+      }
+
+      // 5. 125 Speedling Trays Grid (C16) on Mesón A & B (Hybrid 500 + 320 + 320 = 1.140 mm + 2x55 mm)
+      if (state.layers.sub4) {
+        [200, 2550].forEach((bx, idx) => {
+          const xCol1 = bx + 55;          // 500 mm wide column (25 rows of 320 mm)
+          const xCol2 = bx + 55 + 500;    // 320 mm wide column (16 rows of 500 mm)
+          const xCol3 = bx + 55 + 820;    // 320 mm wide column (16 rows of 500 mm)
+
+          html += `<g onclick="selectPart('C16')" class="${partClass('C16')}">`;
+          for (let r = 0; r < 25; r++) {
+            html += `<rect x="${xCol1}" y="${1000 + r * 320}" width="500" height="320" fill="#9333ea" fill-opacity="0.28" stroke="#c084fc" stroke-width="6"/>`;
+          }
+          for (let r = 0; r < 16; r++) {
+            html += `<rect x="${xCol2}" y="${1000 + r * 500}" width="320" height="500" fill="#7e22ce" fill-opacity="0.28" stroke="#c084fc" stroke-width="6"/>`;
+            html += `<rect x="${xCol3}" y="${1000 + r * 500}" width="320" height="500" fill="#6b21a8" fill-opacity="0.28" stroke="#c084fc" stroke-width="6"/>`;
+          }
+          html += `
+            <rect x="${bx + 150}" y="${4800}" width="950" height="360" rx="20" fill="#090d16" fill-opacity="0.88" stroke="#c084fc" stroke-width="10"/>
+            <text x="${bx + 625}" y="${5025}" fill="#f3e8ff" font-family="JetBrains Mono" font-size="95" font-weight="700" text-anchor="middle">
+              [C16] Bandejas 500+320+320 mm
+            </text>
+          </g>`;
+        });
+      }
+
+      // 6. Structural Axes 1 to 6 (every 1.800 mm), Foundations (C05), Pillars (C01) & Trusses (C02)
+      if (state.layers.sub1) {
+        const yAxes = [0, 1800, 3600, 5400, 7200, 9000];
+        yAxes.forEach((y, i) => {
+          // Axis Grid Line
+          html += `
+            <line x1="-550" y1="${y}" x2="4550" y2="${y}" stroke="#f59e0b" stroke-width="8" stroke-dasharray="70,50" opacity="0.65"/>
+            <circle cx="-680" cy="${y}" r="120" fill="#0f172a" stroke="#f59e0b" stroke-width="12"/>
+            <text x="-680" y="${y + 38}" fill="#fbbf24" font-family="JetBrains Mono" font-size="105" font-weight="700" text-anchor="middle">E${i + 1}</text>
+            <text x="4620" y="${y + 35}" fill="#fbbf24" font-family="JetBrains Mono" font-size="95">Y=${y} mm</text>
+          `;
+
+          // Truss C02 overhead beam
+          html += `
+            <line onclick="selectPart('C02')" class="${partClass('C02')}" x1="-300" y1="${y}" x2="4300" y2="${y}" stroke="#f59e0b" stroke-width="26" opacity="0.75"/>
+          `;
+
+          // Concrete Footings C05 (400x400 mm) and Polines C01 (Ø115 mm) at X=50 and X=3950
+          [50, 3950].forEach(px => {
+            html += `
+              <rect onclick="selectPart('C05')" class="${partClass('C05')}" x="${px - 200}" y="${y - 200}" width="400" height="400"
+                    fill="#475569" fill-opacity="0.7" stroke="#94a3b8" stroke-width="12"/>
+              <circle onclick="selectPart('C01')" class="${partClass('C01')}" cx="${px}" cy="${y}" r="65"
+                      fill="#d97706" stroke="#fef08a" stroke-width="14"/>
+            `;
+          });
+        });
+      }
+
+      // 7. HDPE Ø25 mm Irrigation Lines & 16 Inverted Micro-sprinklers (C15)
+      if (state.layers.sub3) {
+        html += `<g onclick="selectPart('C15')" class="${partClass('C15')}">`;
+        // Header feed from C14 to X=825 and X=3175
+        html += `
+          <line x1="825" y1="390" x2="3175" y2="390" stroke="#38bdf8" stroke-width="22"/>
+          <line x1="825" y1="390" x2="825" y2="8800" stroke="#38bdf8" stroke-width="22"/>
+          <line x1="3175" y1="390" x2="3175" y2="8800" stroke="#38bdf8" stroke-width="22"/>
+        `;
+        for (let i = 0; i < 8; i++) {
+          const sy = 1500 + i * 1000;
+          [825, 3175].forEach(sx => {
+            if (state.snowSimActive) {
+              html += `<circle cx="${sx}" cy="${sy}" r="625" fill="#38bdf8" fill-opacity="0.14" stroke="#38bdf8" stroke-width="8" stroke-dasharray="30,30"/>`;
+            }
+            html += `<circle cx="${sx}" cy="${sy}" r="48" fill="#0284c7" stroke="#e0f2fe" stroke-width="12"/>`;
+          });
+        }
+        html += `</g>`;
+      }
+
+      // 8. Millimeter Dimensions (Cotas)
+      html += svgDim(0, 9000, 4000, 9000, 'ANCHO ESTRUCTURAL X = 4.000 mm', 580, 120, '#38bdf8');
+      html += svgDim(-300, 9000, 4300, 9000, 'PROYECCIÓN CUBIERTA = 4.600 mm (Aleros 300 mm)', 920, 120, '#f59e0b');
+      // Transverse detailed breakdown at bottom
+      html += svgDim(200, 9000, 1450, 9000, '1.250 mm (Mesón A)', 260, 95, '#10b981');
+      html += svgDim(1450, 9000, 2550, 9000, '1.100 mm (Pasillo)', 260, 95, '#cbd5e1');
+      html += svgDim(2550, 9000, 3800, 9000, '1.250 mm (Mesón B)', 260, 95, '#10b981');
+      // Longitudinal Y dimensions
+      html += svgDim(0, 0, 0, 9000, 'LARGO TOTAL Y = 9.000 mm (5 vanos × 1.800 mm)', -850, 125, '#38bdf8');
+      html += svgDim(4000, 0, 4000, 1000, 'Cabezal 1.000 mm', 420, 95, '#38bdf8');
+      html += svgDim(4000, 1000, 4000, 9000, 'Zona Mesones Y = 8.000 mm', 420, 110, '#10b981');
+
+      return html;
+    }
+
+    // 2D VIEW 2: CORTE TRANSVERSAL ESTRUCTURAL A-A' (X-Z, en mm)
+    // Note: In SVG, Y goes downwards, so SVG_Y = 3800 - Z_mm
+    function build2DSectionSVG() {
+      const zToY = (z) => 3800 - z;
+      let html = '';
+
+      // Ground line NTN ±0,00 mm
+      const yNTN = zToY(0);
+      html += `
+        <line x1="-900" y1="${yNTN}" x2="4900" y2="${yNTN}" stroke="#94a3b8" stroke-width="14" stroke-dasharray="60,30"/>
+        <text x="-850" y="${yNTN - 45}" fill="#94a3b8" font-family="JetBrains Mono" font-size="95" font-weight="700">NTN ±0,00 mm (620 msnm)</text>
+      `;
+
+      // 1. Gravel & Geotextile Floor C11 (Z = 0 to +80 mm)
+      if (state.layers.sub2) {
+        html += `
+          <rect onclick="selectPart('C11')" class="${partClass('C11')}" x="0" y="${zToY(80)}" width="4000" height="80"
+                fill="#475569" stroke="#94a3b8" stroke-width="10"/>
+          <text x="2000" y="${zToY(80) + 185}" fill="#cbd5e1" font-family="JetBrains Mono" font-size="88" text-anchor="middle">
+            [C11] Geotextil Antimaleza + 80 mm Gravilla Drenante (3,0 m³)
+          </text>
+        `;
+      }
+
+      // 2. Foundations C05 (Z = -600 to 0 mm, 400x600 mm) & Pillars C01 (Z = -600 to +2400 mm)
+      if (state.layers.sub1) {
+        [50, 3950].forEach((px, idx) => {
+          html += `
+            <rect onclick="selectPart('C05')" class="${partClass('C05')}" x="${px - 200}" y="${zToY(0)}" width="400" height="600"
+                  fill="#334155" stroke="#94a3b8" stroke-width="14"/>
+            <text x="${px}" y="${zToY(-650)}" fill="#94a3b8" font-family="JetBrains Mono" font-size="85" text-anchor="middle">
+              [C05] Poyo 400×400×600 mm (Z=-600)
+            </text>
+            <!-- Pillar C01 Ø115 x 3.000 mm -->
+            <rect onclick="selectPart('C01')" class="${partClass('C01')}" x="${px - 57}" y="${zToY(2400)}" width="115" height="3000"
+                  fill="#d97706" stroke="#fde047" stroke-width="12"/>
+          `;
+        });
+      }
+
+      // 3. Elevated Benches A & B (X=200..1450 and X=2550..3800, Z=+850 mm)
+      if (state.layers.sub2) {
+        [200, 2550].forEach((bx, idx) => {
+          const label = idx === 0 ? 'MESÓN A' : 'MESÓN B';
+          html += `
+            <g onclick="selectPart('C08')" class="${partClass('C08')}">
+              <!-- Legs 2x4" -->
+              <rect x="${bx}" y="${zToY(850)}" width="45" height="850" fill="#059669" stroke="#34d399" stroke-width="8"/>
+              <rect x="${bx + 1205}" y="${zToY(850)}" width="45" height="850" fill="#059669" stroke="#34d399" stroke-width="8"/>
+              <!-- Lower Brace at Z=+250 mm -->
+              <rect x="${bx}" y="${zToY(290)}" width="1250" height="45" fill="#047857" stroke="#34d399" stroke-width="8"/>
+              <!-- Top Frame 2x4" at Z=+760..+850 mm -->
+              <rect x="${bx}" y="${zToY(850)}" width="1250" height="90" fill="#059669" stroke="#6ee7b7" stroke-width="10"/>
+            </g>
+            <!-- Double Mesh C09 + C10 at Z=+850 mm -->
+            <line onclick="selectPart('C09')" class="${partClass('C09')}" x1="${bx}" y1="${zToY(855)}" x2="${bx + 1250}" y2="${zToY(855)}"
+                  stroke="#34d399" stroke-width="16" stroke-dasharray="30,15"/>
+            <text x="${bx + 625}" y="${zToY(560)}" fill="#6ee7b7" font-family="JetBrains Mono" font-size="88" font-weight="700" text-anchor="middle">
+              ${label} (1.250 mm) [C08/C09/C10]
+            </text>
+            <text x="${bx + 625}" y="${zToY(440)}" fill="#a7f3d0" font-family="JetBrains Mono" font-size="78" text-anchor="middle">
+              Cota Apoyo Z = +850 mm · Riostra Z = +250 mm
+            </text>
+          `;
+        });
+      }
+
+      // 4. Speedling Trays C16 (Z = +850 to +970 mm, h=120 mm)
+      if (state.layers.sub4) {
+        [200, 2550].forEach(bx => {
+          html += `
+            <g onclick="selectPart('C16')" class="${partClass('C16')}">
+              <rect x="${bx + 55}" y="${zToY(970)}" width="500" height="120" fill="#9333ea" fill-opacity="0.7" stroke="#e9d5ff" stroke-width="10"/>
+              <rect x="${bx + 555}" y="${zToY(970)}" width="320" height="120" fill="#7e22ce" fill-opacity="0.7" stroke="#e9d5ff" stroke-width="10"/>
+              <rect x="${bx + 875}" y="${zToY(970)}" width="320" height="120" fill="#6b21a8" fill-opacity="0.7" stroke="#e9d5ff" stroke-width="10"/>
+              <text x="${bx + 625}" y="${zToY(1030)}" fill="#f3e8ff" font-family="JetBrains Mono" font-size="82" font-weight="700" text-anchor="middle">
+                [C16] Bandejas h=120 mm (Tope Z=+970 mm)
+              </text>
+            </g>
+          `;
+        });
+      }
+
+      // 5. Overhead Irrigation Lines & Spray Cones C15 at Z = +1.850 mm
+      if (state.layers.sub3) {
+        [825, 3175].forEach(sx => {
+          html += `
+            <g onclick="selectPart('C15')" class="${partClass('C15')}">
+              <polygon points="${sx},${zToY(1850)} ${sx - 625},${zToY(970)} ${sx + 625},${zToY(970)}"
+                       fill="#38bdf8" fill-opacity="${state.snowSimActive ? '0.32' : '0.14'}" stroke="#38bdf8" stroke-width="10" stroke-dasharray="35,25"/>
+              <circle cx="${sx}" cy="${zToY(1850)}" r="45" fill="#0284c7" stroke="#ffffff" stroke-width="12"/>
+              <text x="${sx}" y="${zToY(1940)}" fill="#7dd3fc" font-family="JetBrains Mono" font-size="82" font-weight="700" text-anchor="middle">
+                [C15] HDPE Ø25 (Z=+1.850 mm)
+              </text>
+            </g>
+          `;
+        });
+      }
+
+      // 6. Retractable Raschel 65% Ceiling C07 at Z=+2.400 mm & Type-A 35° Truss C02 + Roof C04
+      if (state.layers.sub1) {
+        // Raschel C07
+        html += `
+          <line onclick="selectPart('C07')" class="${partClass('C07')}" x1="100" y1="${zToY(2340)}" x2="3900" y2="${zToY(2340)}"
+                stroke="#10b981" stroke-width="18" stroke-dasharray="55,35"/>
+          <text x="2000" y="${zToY(2220)}" fill="#34d399" font-family="JetBrains Mono" font-size="85" text-anchor="middle">
+            [C07] Cielo Corredizo Malla Raschel 65% (Z = +2.400 mm)
+          </text>
+        `;
+
+        // Truss C02 (Bottom chord Z=+2400, Peak Z=+3800 at X=2000, Eaves at X=-300/4300 Z=+2190)
+        html += `
+          <g onclick="selectPart('C02')" class="${partClass('C02')}">
+            <!-- Bottom Tie Beam L=4.000 mm -->
+            <rect x="0" y="${zToY(2470)}" width="4000" height="70" fill="#f59e0b" stroke="#fef08a" stroke-width="10"/>
+            <!-- Central King Post (Pendolón 1.400 mm) -->
+            <rect x="1965" y="${zToY(3800)}" width="70" height="1400" fill="#d97706" stroke="#fef08a" stroke-width="10"/>
+            <!-- Diagonal Web Struts -->
+            <line x1="1000" y1="${zToY(2435)}" x2="2000" y2="${zToY(3100)}" stroke="#f59e0b" stroke-width="45"/>
+            <line x1="3000" y1="${zToY(2435)}" x2="2000" y2="${zToY(3100)}" stroke="#f59e0b" stroke-width="45"/>
+            <!-- Inclined Rafters (Pares 35°, L=2.808 mm) -->
+            <line x1="-300" y1="${zToY(2190)}" x2="2000" y2="${zToY(3800)}" stroke="#f59e0b" stroke-width="65"/>
+            <line x1="4300" y1="${zToY(2190)}" x2="2000" y2="${zToY(3800)}" stroke="#f59e0b" stroke-width="65"/>
+          </g>
+        `;
+
+        // 12 Purlins C03 (Costaneras IPV 2x4" every 550 mm)
+        html += `<g onclick="selectPart('C03')" class="${partClass('C03')}">`;
+        for (let i = 0; i < 6; i++) {
+          const frac = i / 5;
+          const lx = -250 + frac * 2200;
+          const lz = 2225 + frac * 1540;
+          const rx = 4250 - frac * 2200;
+          html += `
+            <circle cx="${lx}" cy="${zToY(lz) - 35}" r="28" fill="#fde047" stroke="#ca8a04" stroke-width="8"/>
+            <circle cx="${rx}" cy="${zToY(lz) - 35}" r="28" fill="#fde047" stroke="#ca8a04" stroke-width="8"/>
+          `;
+        }
+        html += `</g>`;
+
+        // Polycarbonate Roof C04 (0,7 mm x 3.000 mm)
+        html += `
+          <g onclick="selectPart('C04')" class="${partClass('C04')}">
+            <line x1="-320" y1="${zToY(2245)}" x2="2000" y2="${zToY(3870)}" stroke="#38bdf8" stroke-width="26"/>
+            <line x1="4320" y1="${zToY(2245)}" x2="2000" y2="${zToY(3870)}" stroke="#38bdf8" stroke-width="26"/>
+            <text x="700" y="${zToY(3320)}" fill="#38bdf8" font-family="JetBrains Mono" font-size="92" font-weight="700" transform="rotate(-35 700 ${zToY(3320)})">
+              [C04] Policarbonato L=3.000 mm (35°)
+            </text>
+          </g>
+        `;
+
+        // Snow Cap Simulation (400 mm wet snow layer)
+        if (state.snowSimActive) {
+          html += `
+            <polygon points="-320,${zToY(2265)} 2000,${zToY(3890)} 2000,${zToY(4290)} -320,${zToY(2665)}"
+                     fill="#e0f2fe" fill-opacity="0.75" stroke="#ffffff" stroke-width="12"/>
+            <polygon points="4320,${zToY(2265)} 2000,${zToY(3890)} 2000,${zToY(4290)} 4320,${zToY(2665)}"
+                     fill="#bae6fd" fill-opacity="0.75" stroke="#ffffff" stroke-width="12"/>
+            <text x="2000" y="${zToY(4420)}" fill="#ffffff" font-family="JetBrains Mono" font-size="110" font-weight="700" text-anchor="middle">
+              ❄️ CARGA EXTREMA: 400 mm NIEVE HÚMEDA (120–160 kg/m² = 5.760 kg)
+            </text>
+          `;
+        }
+      }
+
+      // 7. Millimeter Section Dimensions
+      html += svgDim(0, zToY(0), 0, zToY(2400), 'Hombro Z = +2.400 mm', -480, 105, '#f59e0b');
+      html += svgDim(2000, zToY(2400), 2000, zToY(3800), 'Pendolón 1.400 mm (Cumbrera +3.800)', 0, 95, '#fbbf24');
+      html += svgDim(4000, zToY(0), 4000, zToY(3800), 'ALTURA CUMBRERA Z = +3.800 mm', 550, 110, '#38bdf8');
+      html += svgDim(0, zToY(-600), 4000, zToY(-600), 'ANCHO ESTRUCTURAL X = 4.000 mm (Semiluz 2.000 mm)', 320, 110, '#38bdf8');
+      html += svgDim(1450, zToY(850), 2550, zToY(850), 'Pasillo 1.100 mm', -180, 92, '#cbd5e1');
+
+      return html;
+    }
+
+    // 2D VIEW 3: DETALLE AL MILÍMETRO DEL MESÓN (1.250 mm) Y BANDEJAS SPEEDLING
+    function build2DBenchDetailSVG() {
+      let html = '';
+
+      // Title
+      html += `
+        <text x="625" y="-210" fill="#f8fafc" font-family="JetBrains Mono" font-size="42" font-weight="700" text-anchor="middle">
+          DETALLE CONSTRUCTIVO DE MESÓN (1.250 mm) Y ARREGLO HÍBRIDO DE BANDEJAS
+        </text>
+        <text x="625" y="-155" fill="#38bdf8" font-family="JetBrains Mono" font-size="28" text-anchor="middle">
+          55 mm (Baranda) + 500 mm (Col. 1) + 320 mm (Col. 2) + 320 mm (Col. 3) + 55 mm (Baranda) = 1.250 mm exactos
+        </text>
+      `;
+
+      // Support Frame C08 (Cross beam 41x90 mm + Side rails 41x90 mm)
+      html += `
+        <g onclick="selectPart('C08')" class="${partClass('C08')}">
+          <!-- Main Transverse Joist IPV 2x4" (1.250 x 90 mm) -->
+          <rect x="0" y="320" width="1250" height="90" fill="#065f46" stroke="#10b981" stroke-width="4"/>
+          <!-- Left & Right Containment Rails IPV 2x4" (41 x 90 mm) -->
+          <rect x="0" y="200" width="41" height="120" fill="#047857" stroke="#34d399" stroke-width="4"/>
+          <rect x="1209" y="200" width="41" height="120" fill="#047857" stroke="#34d399" stroke-width="4"/>
+          <!-- Legs IPV 2x4" -->
+          <rect x="0" y="410" width="90" height="550" fill="#064e3b" stroke="#10b981" stroke-width="4"/>
+          <rect x="1160" y="410" width="90" height="550" fill="#064e3b" stroke="#10b981" stroke-width="4"/>
+          <text x="625" y="375" fill="#a7f3d0" font-family="JetBrains Mono" font-size="28" font-weight="700" text-anchor="middle">
+            [C08] Travesaño Estructural Pino IPV 2×4" (41 × 90 mm cada 800 mm)
+          </text>
+        </g>
+      `;
+
+      // Acma Mesh C09 (Ø4.2 mm) + Galvanized 1/2" Mesh C10 (Ø0.9 mm) at Z=+850 mm
+      html += `
+        <g onclick="selectPart('C09')" class="${partClass('C09')}">
+          <line x1="41" y1="312" x2="1209" y2="312" stroke="#34d399" stroke-width="8" stroke-dasharray="22,12"/>
+        </g>
+        <g onclick="selectPart('C10')" class="${partClass('C10')}">
+          <line x1="41" y1="302" x2="1209" y2="302" stroke="#a7f3d0" stroke-width="5" stroke-dasharray="8,6"/>
+        </g>
+      `;
+
+      // 3 Columns of Speedling Trays C16 (500 + 320 + 320 = 1.140 mm, height 120 mm)
+      const cols = [
+        { x: 55, w: 500, label: 'Columna 1: 500 mm (25 filas × 320 mm)', cells: 9 },
+        { x: 555, w: 320, label: 'Columna 2: 320 mm (16×500)', cells: 6 },
+        { x: 875, w: 320, label: 'Columna 3: 320 mm (16×500)', cells: 6 }
+      ];
+
+      cols.forEach((c, idx) => {
+        html += `
+          <g onclick="selectPart('C16')" class="${partClass('C16')}">
+            <rect x="${c.x}" y="180" width="${c.w}" height="120" rx="4" fill="#7e22ce" fill-opacity="0.55" stroke="#d8b4fe" stroke-width="4"/>
+            <text x="${c.x + c.w / 2}" y="155" fill="#f3e8ff" font-family="JetBrains Mono" font-size="22" font-weight="700" text-anchor="middle">
+              ${c.label}
+            </text>
+        `;
+        // Draw tapered alveoli cells with C18 substrate & C20 seedlings
+        const cellW = (c.w - 20) / c.cells;
+        for (let k = 0; k < c.cells; k++) {
+          const cx = c.x + 10 + k * cellW;
+          html += `
+            <polygon points="${cx + 3},184 ${cx + cellW - 3},184 ${cx + cellW * 0.72},298 ${cx + cellW * 0.28},298"
+                     fill="#854d0e" stroke="#facc15" stroke-width="1.5"/>
+            <!-- Native Seedling C20 -->
+            <line x1="${cx + cellW / 2}" y1="184" x2="${cx + cellW / 2}" y2="115" stroke="#4ade80" stroke-width="3"/>
+            <circle cx="${cx + cellW / 2}" cy="110" r="10" fill="#22c55e"/>
+          `;
+        }
+        html += `</g>`;
+      });
+
+      // Air Pruning Arrows Under Mesh
+      for (let ax = 160; ax <= 1100; ax += 180) {
+        html += `
+          <path d="M ${ax} 520 L ${ax} 430" stroke="#38bdf8" stroke-width="3" stroke-dasharray="8,6"/>
+          <polygon points="${ax},420 ${ax - 8},438 ${ax + 8},438" fill="#38bdf8"/>
+        `;
+      }
+      html += `
+        <text x="625" y="565" fill="#38bdf8" font-family="JetBrains Mono" font-size="26" font-weight="600" text-anchor="middle">
+          ↑ CÁMARA DE AIRE INFERIOR: PODA RADICULAR AÉREA AUTOMÁTICA (CERO ESPIRALAMIENTO) ↑
+        </text>
+      `;
+
+      // Millimeter Dimensions for Bench Detail
+      html += svgDim(0, 680, 1250, 680, 'ANCHO EXTERIOR TOTAL MESÓN = 1.250 mm', 90, 32, '#38bdf8');
+      html += svgDim(0, 680, 55, 680, '55', 15, 22, '#10b981');
+      html += svgDim(55, 680, 555, 680, '500 mm', 15, 26, '#c084fc');
+      html += svgDim(555, 680, 875, 680, '320 mm', 15, 26, '#c084fc');
+      html += svgDim(875, 680, 1195, 680, '320 mm', 15, 26, '#c084fc');
+      html += svgDim(1195, 680, 1250, 680, '55', 15, 22, '#10b981');
+      html += svgDim(1250, 180, 1250, 300, '120 mm [C16]', 95, 25, '#c084fc');
+
+      return html;
+    }
+
+    // 2D SVG Mouse Drag & Wheel Zoom Setup
+    function init2DEvents() {
+      const container = document.getElementById('svg-container');
+      container.addEventListener('mousedown', (e) => {
+        if (e.target.closest('.cad-part')) return;
+        state.isPanning2D = true;
+        state.panStart2D = { x: e.clientX, y: e.clientY };
+      });
+      window.addEventListener('mousemove', (e) => {
+        if (!state.isPanning2D) return;
+        const rect = container.getBoundingClientRect();
+        const dx = (e.clientX - state.panStart2D.x) * (state.svgViewBox.w / rect.width);
+        const dy = (e.clientY - state.panStart2D.y) * (state.svgViewBox.h / rect.height);
+        state.svgViewBox.x -= dx;
+        state.svgViewBox.y -= dy;
+        state.panStart2D = { x: e.clientX, y: e.clientY };
+        apply2DViewBox();
+      });
+      window.addEventListener('mouseup', () => { state.isPanning2D = false; });
+      container.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        zoom2D(e.deltaY < 0 ? 1.12 : 0.89);
+      }, { passive: false });
+    }
+
+    /*************************************************************************
+     * 6. REAL-TIME 3D PARAMETRIC CAD ENGINE (PURE HTML5 CANVAS, ZERO LAG)
+     *************************************************************************/
+    function set3DCamera(preset) {
+      if (preset === 'iso') {
+        state.cam3D = { yaw: -0.68, pitch: 0.44, zoom: 1.0, panX: 0, panY: 25 };
+      } else if (preset === 'north') {
+        state.cam3D = { yaw: 3.14, pitch: 0.22, zoom: 1.15, panX: 0, panY: 35 };
+      } else if (preset === 'section') {
+        state.cam3D = { yaw: 0.0, pitch: 0.08, zoom: 1.25, panX: 0, panY: 40 };
+      } else if (preset === 'side') {
+        state.cam3D = { yaw: -1.57, pitch: 0.15, zoom: 0.95, panX: 0, panY: 30 };
+      } else if (preset === 'top') {
+        state.cam3D = { yaw: 0.0, pitch: 1.48, zoom: 0.92, panX: 0, panY: 0 };
+      }
+      render3DCAD();
+    }
+
+    function zoom3D(factor) {
+      state.cam3D.zoom = Math.max(0.45, Math.min(2.8, state.cam3D.zoom * factor));
+      render3DCAD();
+    }
+
+    function updateExplode3D(val) {
+      state.explodePct = Number(val);
+      document.getElementById('explode-val').textContent = `${state.explodePct}%`;
+      render3DCAD();
+    }
+
+    function resize3DCanvas() {
+      const canvas = document.getElementById('canvas3d');
+      if (!canvas) return;
+      const rect = canvas.parentElement.getBoundingClientRect();
+      const dpr = window.devicePixelRatio || 1;
+      canvas.width = rect.width * dpr;
+      canvas.height = rect.height * dpr;
+      render3DCAD();
+    }
+
+    // Build 3D Geometry Primitives (Boxes & Polygons in mm coordinates: X=0..4000, Y=0..9000, Z=-600..+3800)
+    function generate3DScenePrimitives() {
+      const polys = [];
+      const exp = state.explodePct / 100; // 0.0 to 1.0
+
+      // Helper to add a 3D Box in mm coordinates
+      function addBox(x1, y1, z1, x2, y2, z2, code, fill, stroke, alpha = 0.85, zOffset = 0) {
+        const za = z1 + zOffset;
+        const zb = z2 + zOffset;
+        const v = [
+          [x1, y1, za], [x2, y1, za], [x2, y2, za], [x1, y2, za],
+          [x1, y1, zb], [x2, y1, zb], [x2, y2, zb], [x1, y2, zb]
+        ];
+        const faces = [
+          [0, 1, 2, 3], [4, 5, 6, 7],
+          [0, 1, 5, 4], [2, 3, 7, 6],
+          [0, 3, 7, 4], [1, 2, 6, 5]
+        ];
+        faces.forEach(f => {
+          polys.push({
+            pts: f.map(idx => v[idx]),
+            code, fill, stroke, alpha
+          });
+        });
+      }
+
+      // Layer 1: Gravel Floor C11 (Z = 0 to 80 mm)
+      if (state.layers.sub2) {
+        addBox(0, 0, 0, 4000, 9000, 80, 'C11', '#1e293b', '#475569', 0.82, -exp * 400);
+      }
+
+      // Layer 2: Foundations C05 & 12 Pillars C01
+      const yAxes = [0, 1800, 3600, 5400, 7200, 9000];
+      if (state.layers.sub1) {
+        yAxes.forEach(y => {
+          [50, 3950].forEach(px => {
+            // Footing C05 (400x400x600 mm, Z=-600..0)
+            addBox(px - 200, y - 200, -600, px + 200, y + 200, 0, 'C05', '#475569', '#94a3b8', 0.88, -exp * 900);
+            // Pillar C01 (115x115x3000 mm, Z=-600..+2400)
+            addBox(px - 58, y - 58, 0, px + 58, y + 58, 2400, 'C01', '#d97706', '#fde047', 0.92, 0);
+          });
+        });
+      }
+
+      // Layer 3: Elevated Benches A & B (C08, C09, C10) at Z=+850 mm
+      if (state.layers.sub2) {
+        const zBenchOff = exp * 350;
+        [200, 2550].forEach(bx => {
+          // Bench Legs every 1600 mm
+          for (let ly = 1000; ly <= 9000; ly += 1600) {
+            addBox(bx, ly - 25, 80, bx + 45, ly + 25, 850, 'C08', '#047857', '#34d399', 0.9, zBenchOff);
+            addBox(bx + 1205, ly - 25, 80, bx + 1250, ly + 25, 850, 'C08', '#047857', '#34d399', 0.9, zBenchOff);
+            // Lower brace at Z=+250 mm
+            addBox(bx, ly - 20, 250, bx + 1250, ly + 20, 295, 'C08', '#065f46', '#10b981', 0.85, zBenchOff);
+          }
+          // Bench Top Frame C08 (1.250 x 8.000 mm, Z=760..850)
+          addBox(bx, 1000, 760, bx + 1250, 9000, 850, 'C08', '#059669', '#6ee7b7', 0.75, zBenchOff);
+          // Double Mesh Surface C09/C10 at Z=850..860
+          addBox(bx + 40, 1000, 850, bx + 1210, 9000, 860, 'C09', '#10b981', '#a7f3d0', 0.55, zBenchOff + exp * 180);
+        });
+      }
+
+      // Layer 4: 125 Speedling Trays C16 (Z=+850..+970 mm)
+      if (state.layers.sub4) {
+        const zTrayOff = exp * 850;
+        [200, 2550].forEach(bx => {
+          // Render segmented blocks representing the 3 hybrid columns (500 + 320 + 320 mm)
+          for (let seg = 0; seg < 8; seg++) {
+            const sy1 = 1000 + seg * 1000 + 20;
+            const sy2 = sy1 + 940;
+            // Col 1 (500 mm)
+            addBox(bx + 55, sy1, 860, bx + 555, sy2, 970, 'C16', '#9333ea', '#e9d5ff', 0.84, zTrayOff);
+            // Col 2 (320 mm)
+            addBox(bx + 565, sy1, 860, bx + 875, sy2, 970, 'C16', '#7e22ce', '#d8b4fe', 0.84, zTrayOff);
+            // Col 3 (320 mm)
+            addBox(bx + 885, sy1, 860, bx + 1195, sy2, 970, 'C16', '#6b21a8', '#c084fc', 0.84, zTrayOff);
+          }
+        });
+      }
+
+      // Layer 5: Hydraulic System (Tank C12, Pump C13, Manifold C14, HDPE Lines C15 at Z=+1850 mm)
+      if (state.layers.sub3) {
+        const zHydOff = exp * 1250;
+        // Exterior Tank 1000L C12 (Octagonal cylinder approximation Ø1100 x 1250 mm at X=950, Y=-720)
+        addBox(400, -1270, 0, 1500, -170, 1250, 'C12', '#0284c7', '#7dd3fc', 0.88, 0);
+        // Pump House C13 (600x600x700 mm at X=1750..2350, Y=-1020..-420)
+        addBox(1750, -1020, 0, 2350, -420, 700, 'C13', '#0ea5e9', '#bae6fd', 0.88, 0);
+        // Manifold C14 in North Header (Y=150..500, Z=900..1350)
+        addBox(1600, 150, 900, 2400, 450, 1350, 'C14', '#0369a1', '#38bdf8', 0.92, zHydOff * 0.4);
+
+        // 2 Overhead HDPE Ø25 Lines C15 at Z=+1850 mm
+        [825, 3175].forEach(sx => {
+          addBox(sx - 22, 300, 1830, sx + 22, 8850, 1875, 'C15', '#38bdf8', '#e0f2fe', 0.95, zHydOff);
+          // Spray cones if active
+          if (state.snowSimActive) {
+            for (let i = 0; i < 8; i++) {
+              const sy = 1500 + i * 1000;
+              const topPt = [sx, sy, 1830 + zHydOff];
+              const r = 580;
+              const botZ = 970 + exp * 850;
+              polys.push({
+                pts: [topPt, [sx - r, sy - r * 0.4, botZ], [sx + r, sy - r * 0.4, botZ]],
+                code: 'C15', fill: '#38bdf8', stroke: '#7dd3fc', alpha: 0.22
+              });
+              polys.push({
+                pts: [topPt, [sx - r * 0.4, sy - r, botZ], [sx - r * 0.4, sy + r, botZ]],
+                code: 'C15', fill: '#38bdf8', stroke: '#7dd3fc', alpha: 0.22
+              });
+            }
+          }
+        });
+      }
+
+      // Layer 6: Retractable Raschel Ceiling C07 (+2400 mm), 7 Trusses C02 (35°), Costaneras C03 & Polycarbonate Roof C04
+      if (state.layers.sub1) {
+        const zRoofOff = exp * 1850;
+
+        // Raschel Thermal Curtain C07 at Z=+2.360 mm
+        polys.push({
+          pts: [
+            [100, 0, 2360 + zRoofOff * 0.65],
+            [3900, 0, 2360 + zRoofOff * 0.65],
+            [3900, 9000, 2360 + zRoofOff * 0.65],
+            [100, 9000, 2360 + zRoofOff * 0.65]
+          ],
+          code: 'C07', fill: '#059669', stroke: '#34d399', alpha: 0.26
+        });
+
+        // 7 Type-A Trusses C02 (6 main axes + 1 North header brace)
+        const trussY = [0, 1000, 1800, 3600, 5400, 7200, 9000];
+        trussY.forEach(ty => {
+          // Bottom Tie Beam L=4.000 mm at Z=2400
+          addBox(0, ty - 25, 2400, 4000, ty + 25, 2490, 'C02', '#f59e0b', '#fef08a', 0.92, zRoofOff);
+          // Central King Post (Pendolón 1.400 mm, X=1960..2040, Z=2490..3800)
+          addBox(1960, ty - 25, 2490, 2040, ty + 25, 3800, 'C02', '#d97706', '#fef08a', 0.92, zRoofOff);
+          // Left & Right 35° Rafters (Pares inclinados L=2.808 mm from X=-300 Z=2190 to X=2000 Z=3800)
+          polys.push({
+            pts: [
+              [-300, ty, 2190 + zRoofOff],
+              [2000, ty, 3800 + zRoofOff],
+              [2000, ty, 3710 + zRoofOff],
+              [-300, ty, 2100 + zRoofOff]
+            ],
+            code: 'C02', fill: '#f59e0b', stroke: '#fef08a', alpha: 0.95
+          });
+          polys.push({
+            pts: [
+              [4300, ty, 2190 + zRoofOff],
+              [2000, ty, 3800 + zRoofOff],
+              [2000, ty, 3710 + zRoofOff],
+              [4300, ty, 2100 + zRoofOff]
+            ],
+            code: 'C02', fill: '#f59e0b', stroke: '#fef08a', alpha: 0.95
+          });
+        });
+
+        // 12 Longitudinal Purlins (Costaneras IPV 2x4" C03)
+        for (let i = 0; i < 6; i++) {
+          const frac = i / 5;
+          const lx = -250 + frac * 2200;
+          const rx = 4250 - frac * 2200;
+          const pz = 2230 + frac * 1550 + zRoofOff * 1.12;
+          addBox(lx - 25, 0, pz, lx + 25, 9000, pz + 55, 'C03', '#fbbf24', '#fef08a', 0.88, 0);
+          addBox(rx - 25, 0, pz, rx + 25, 9000, pz + 55, 'C03', '#fbbf24', '#fef08a', 0.88, 0);
+        }
+
+        // 18 Polycarbonate Sheets C04 (9 per slope along Y=0..9000 mm)
+        const zPolyOff = zRoofOff * 1.32;
+        for (let s = 0; s < 9; s++) {
+          const sy1 = s * 1000;
+          const sy2 = (s + 1) * 1000;
+          // West Slope
+          polys.push({
+            pts: [
+              [-300, sy1, 2260 + zPolyOff],
+              [2000, sy1, 3860 + zPolyOff],
+              [2000, sy2, 3860 + zPolyOff],
+              [-300, sy2, 2260 + zPolyOff]
+            ],
+            code: 'C04', fill: '#38bdf8', stroke: '#bae6fd', alpha: 0.34
+          });
+          // East Slope
+          polys.push({
+            pts: [
+              [4300, sy1, 2260 + zPolyOff],
+              [2000, sy1, 3860 + zPolyOff],
+              [2000, sy2, 3860 + zPolyOff],
+              [4300, sy2, 2260 + zPolyOff]
+            ],
+            code: 'C04', fill: '#0ea5e9', stroke: '#bae6fd', alpha: 0.34
+          });
+        }
+
+        // 40 cm Wet Snow Pack Simulation on Roof
+        if (state.snowSimActive) {
+          const zSnow = zPolyOff + 90;
+          polys.push({
+            pts: [
+              [-300, 0, 2320 + zSnow],
+              [2000, 0, 3920 + zSnow],
+              [2000, 9000, 3920 + zSnow],
+              [-300, 9000, 2320 + zSnow]
+            ],
+            code: 'C04', fill: '#f8fafc', stroke: '#38bdf8', alpha: 0.76
+          });
+          polys.push({
+            pts: [
+              [4300, 0, 2320 + zSnow],
+              [2000, 0, 3920 + zSnow],
+              [2000, 9000, 3920 + zSnow],
+              [4300, 9000, 2320 + zSnow]
+            ],
+            code: 'C04', fill: '#e2e8f0', stroke: '#38bdf8', alpha: 0.76
+          });
+        }
+      }
+
+      return polys;
+    }
+
+    // Project 3D millimeter point (x, y, z) to 2D Canvas pixel coordinates
+    function project3DPoint(pt, width, height, dpr) {
+      // Center of model in mm: X=2000, Y=4200, Z=1500
+      const cx = pt[0] - 2000;
+      const cy = pt[1] - 4200;
+      const cz = pt[2] - 1500;
+
+      const cosY = Math.cos(state.cam3D.yaw);
+      const sinY = Math.sin(state.cam3D.yaw);
+      const cosP = Math.cos(state.cam3D.pitch);
+      const sinP = Math.sin(state.cam3D.pitch);
+
+      // Rotate around Z (yaw)
+      const rx = cx * cosY - cy * sinY;
+      const ry = cx * sinY + cy * cosY;
+      // Rotate around X (pitch)
+      const rz = ry * sinP + cz * cosP;
+      const depth = ry * cosP - cz * sinP;
+
+      const baseScale = Math.min(width, height) / 9600 * state.cam3D.zoom;
+      const perspective = 18000 / (18000 + depth);
+      const scale = baseScale * perspective;
+
+      const sx = width / 2 + (rx * scale) + state.cam3D.panX * dpr;
+      const sy = height / 2 - (rz * scale) + state.cam3D.panY * dpr;
+
+      return { x: sx, y: sy, depth, scale };
+    }
+
+    function render3DCAD() {
+      const canvas = document.getElementById('canvas3d');
+      if (!canvas) return;
+      const ctx = canvas.getContext('2d');
+      const W = canvas.width;
+      const H = canvas.height;
+      const dpr = window.devicePixelRatio || 1;
+
+      ctx.clearRect(0, 0, W, H);
+
+      // 1. Draw Ground Reference Grid (NTN Z=0 mm)
+      ctx.lineWidth = 1 * dpr;
+      ctx.strokeStyle = 'rgba(56, 189, 248, 0.16)';
+      for (let gx = -1000; gx <= 5000; gx += 1000) {
+        const p1 = project3DPoint([gx, -1500, 0], W, H, dpr);
+        const p2 = project3DPoint([gx, 9500, 0], W, H, dpr);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      }
+      for (let gy = -1000; gy <= 9000; gy += 1000) {
+        const p1 = project3DPoint([-1000, gy, 0], W, H, dpr);
+        const p2 = project3DPoint([5000, gy, 0], W, H, dpr);
+        ctx.beginPath(); ctx.moveTo(p1.x, p1.y); ctx.lineTo(p2.x, p2.y); ctx.stroke();
+      }
+
+      // 2. Generate & Sort 3D Polygons (Painter's Algorithm by centroid depth)
+      const rawPolys = generate3DScenePrimitives();
+      const projected = rawPolys.map(poly => {
+        const projPts = poly.pts.map(p => project3DPoint(p, W, H, dpr));
+        const avgDepth = projPts.reduce((acc, p) => acc + p.depth, 0) / projPts.length;
+        return { ...poly, projPts, avgDepth };
+      });
+
+      projected.sort((a, b) => b.avgDepth - a.avgDepth);
+      state.projectedPolys3D = projected;
+
+      // 3. Render Polygons
+      projected.forEach(poly => {
+        const isSelected = state.selectedCode === poly.code;
+        const isHovered = state.hoveredCode === poly.code;
+
+        ctx.beginPath();
+        poly.projPts.forEach((p, idx) => {
+          if (idx === 0) ctx.moveTo(p.x, p.y);
+          else ctx.lineTo(p.x, p.y);
+        });
+        ctx.closePath();
+
+        ctx.save();
+        ctx.globalAlpha = isSelected || isHovered ? Math.min(1, poly.alpha + 0.25) : poly.alpha;
+        ctx.fillStyle = isSelected ? '#facc15' : (isHovered ? '#38bdf8' : poly.fill);
+        ctx.fill();
+
+        ctx.lineWidth = (isSelected ? 2.4 : (isHovered ? 1.8 : 0.9)) * dpr;
+        ctx.strokeStyle = isSelected ? '#fef08a' : (isHovered ? '#ffffff' : poly.stroke);
+        ctx.stroke();
+        ctx.restore();
+      });
+
+      // 4. Render 3D Coordinate & Dimension Callouts (if Cotas layer is active)
+      if (state.layers.dims) {
+        draw3DLabel(ctx, [2000, -1400, 0], 'NORTE (Cabezal Acceso · X=4.000 mm)', '#38bdf8', W, H, dpr);
+        draw3DLabel(ctx, [2000, 9300, 0], 'SUR (Y=9.000 mm)', '#94a3b8', W, H, dpr);
+        draw3DLabel(ctx, [2000, 0, 3950 + (state.explodePct * 24)], 'Cumbrera Z=+3.800 mm (35°)', '#fbbf24', W, H, dpr);
+        draw3DLabel(ctx, [-450, 4500, 2400], 'Hombro Z=+2.400 mm', '#f59e0b', W, H, dpr);
+        draw3DLabel(ctx, [-450, 4500, -600 - (state.explodePct * 9)], 'Poyos Z=-600 mm [C05]', '#94a3b8', W, H, dpr);
+      }
+    }
+
+    function draw3DLabel(ctx, pt3D, text, color, W, H, dpr) {
+      const p = project3DPoint(pt3D, W, H, dpr);
+      ctx.save();
+      ctx.font = `600 ${11 * dpr}px "JetBrains Mono", monospace`;
+      const tw = ctx.measureText(text).width + 12 * dpr;
+      const th = 18 * dpr;
+      ctx.fillStyle = 'rgba(6, 11, 20, 0.88)';
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1 * dpr;
+      ctx.beginPath();
+      ctx.roundRect(p.x - tw / 2, p.y - th / 2, tw, th, 4 * dpr);
+      ctx.fill();
+      ctx.stroke();
+      ctx.fillStyle = color;
+      ctx.textAlign = 'center';
+      ctx.textBaseline = 'middle';
+      ctx.fillText(text, p.x, p.y);
+      ctx.restore();
+    }
+
+    // Point-in-polygon check for 3D interactive picking
+    function pointInPoly(x, y, pts) {
+      let inside = false;
+      for (let i = 0, j = pts.length - 1; i < pts.length; j = i++) {
+        const xi = pts[i].x, yi = pts[i].y;
+        const xj = pts[j].x, yj = pts[j].y;
+        const intersect = ((yi > y) !== (yj > y)) && (x < (xj - xi) * (y - yi) / (yj - yi + 0.0001) + xi);
+        if (intersect) inside = !inside;
+      }
+      return inside;
+    }
+
+    function init3DEvents() {
+      const canvas = document.getElementById('canvas3d');
+      const tooltip = document.getElementById('tooltip3d');
+      let moved = false;
+
+      canvas.addEventListener('mousedown', (e) => {
+        state.isDragging3D = true;
+        moved = false;
+        state.dragStart3D = { x: e.clientX, y: e.clientY };
+      });
+
+      window.addEventListener('mousemove', (e) => {
+        const rect = canvas.getBoundingClientRect();
+        const dpr = window.devicePixelRatio || 1;
+
+        if (state.isDragging3D) {
+          const dx = e.clientX - state.dragStart3D.x;
+          const dy = e.clientY - state.dragStart3D.y;
+          if (Math.hypot(dx, dy) > 3) moved = true;
+          state.cam3D.yaw += dx * 0.0085;
+          state.cam3D.pitch = Math.max(-0.25, Math.min(1.52, state.cam3D.pitch + dy * 0.0075));
+          state.dragStart3D = { x: e.clientX, y: e.clientY };
+          tooltip.classList.add('hidden');
+          render3DCAD();
+          return;
+        }
+
+        // Hover raycast inside 3D canvas
+        if (e.target === canvas) {
+          const mx = (e.clientX - rect.left) * dpr;
+          const my = (e.clientY - rect.top) * dpr;
+          let hitCode = null;
+          // Iterate front-to-back (reverse of Painter's order)
+          for (let i = state.projectedPolys3D.length - 1; i >= 0; i--) {
+            if (pointInPoly(mx, my, state.projectedPolys3D[i].projPts)) {
+              hitCode = state.projectedPolys3D[i].code;
+              break;
+            }
+          }
+          if (hitCode !== state.hoveredCode) {
+            state.hoveredCode = hitCode;
+            render3DCAD();
+          }
+          if (hitCode) {
+            const item = BOM_DATA.find(d => d.code === hitCode);
+            if (item) {
+              tooltip.classList.remove('hidden');
+              tooltip.style.left = `${Math.min(rect.width - 260, e.clientX - rect.left + 14)}px`;
+              tooltip.style.top = `${Math.max(10, e.clientY - rect.top - 55)}px`;
+              tooltip.innerHTML = `
+                <div class="font-bold text-amber-300">[${item.code}] ${item.name}</div>
+                <div class="text-sky-300 text-[11px]">${item.dims}</div>
+                <div class="text-emerald-400 text-[11px]">Subtotal: ${formatCLP(getAdjustedItemCost(item))} · Clic para fijar</div>
+              `;
+            }
+          } else {
+            tooltip.classList.add('hidden');
+          }
+        }
+      });
+
+      window.addEventListener('mouseup', () => {
+        if (state.isDragging3D && !moved && state.hoveredCode) {
+          selectPart(state.hoveredCode);
+        }
+        state.isDragging3D = false;
+      });
+
+      // Touch support for mobile/tablet
+      canvas.addEventListener('touchstart', (e) => {
+        if (e.touches.length === 1) {
+          state.isDragging3D = true;
+          state.dragStart3D = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        }
+      }, { passive: true });
+
+      canvas.addEventListener('touchmove', (e) => {
+        if (!state.isDragging3D || e.touches.length !== 1) return;
+        const dx = e.touches[0].clientX - state.dragStart3D.x;
+        const dy = e.touches[0].clientY - state.dragStart3D.y;
+        state.cam3D.yaw += dx * 0.0085;
+        state.cam3D.pitch = Math.max(-0.25, Math.min(1.52, state.cam3D.pitch + dy * 0.0075));
+        state.dragStart3D = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+        render3DCAD();
+      }, { passive: true });
+
+      canvas.addEventListener('touchend', () => { state.isDragging3D = false; });
+
+      canvas.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        zoom3D(e.deltaY < 0 ? 1.1 : 0.9);
+      }, { passive: false });
+    }
+
+    /*************************************************************************
+     * 7. INITIALIZATION ON LOAD
+     *************************************************************************/
+    window.onload = function () {
+      renderBOMTable();
+      updateInspectorCard();
+      reset2DView();
+      init2DEvents();
+      init3DEvents();
+      resize3DCanvas();
+      window.addEventListener('resize', resize3DCanvas);
+    };
+  </script>
+</body>
+</html>
